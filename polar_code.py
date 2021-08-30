@@ -1,56 +1,45 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[15]:
+# In[11]:
 
 
 #必要なライブラリ、定数
-import sys
-sys.path.append("../channel")
-from AWGN import _AWGN
-import ray
+
 import numpy as np
-import random
-import time
 import math
 from decimal import *
-random.seed(time.time())
+from AWGN import _AWGN
 
 ch=_AWGN()
 
 
-# In[4]:
+# In[12]:
 
 
 class coding():
-    def __init__(self,N):
-        super().__init__()
+  def __init__(self,N):
+      super().__init__()
 
-        self.N=N
-        self.R=0.5
-        self.K=math.floor(self.R*self.N)
-        self.design_SNR=4
+      self.N=N
+      self.R=0.5
+      self.K=math.floor(self.R*self.N)
+      self.design_SNR=4
 
-        #prepere constants
-        tmp2=np.log2(self.N)
-        self.itr_num=tmp2.astype(int)
-        self.frozen_bits,self.info_bits=            self.Bhattacharyya_bounds()
+      #prepere constants
+      tmp2=np.log2(self.N)
+      self.itr_num=tmp2.astype(int)
+      self.frozen_bits,self.info_bits=self.Bhattacharyya_bounds()
 
-        self.Gres=self.make_H()
+      self.Gres=self.make_H()
 
-        self.filename="polar_code_{}_{}".format(self.N,self.K)
+      self.filename="polar_code_{}_{}".format(self.N,self.K)
 
-
-# In[16]:
-
-
-class coding(coding):
   #frozen_bitの選択
   def Bhattacharyya_bounds(self):
     E=np.zeros(1,dtype=np.float128)
     E =Decimal('10') ** (Decimal(str(self.design_SNR)) / Decimal('10'))
-    itr_num=np.log2(N)
-    itr_num=itr_num.astype(int)
+    
     z=np.zeros(self.N,dtype=np.float128)
 
     #10^10かけて計算する
@@ -59,7 +48,7 @@ class coding(coding):
 
     #print("E=",np.exp(-E))
 
-    for j in range(1,itr_num+1):
+    for j in range(1,self.itr_num+1):
       tmp=2**(j)//2
 
       for t in range(tmp):
@@ -68,7 +57,7 @@ class coding(coding):
         z[tmp+t]=Decimal(str(T))**Decimal('2')
     #print(z)
     #np.savetxt("z",z)
-    tmp=self.indices_of_elements(z,N)
+    tmp=self.indices_of_elements(z,self.N)
     frozen_bits=tmp[:self.N-self.K]
     info_bits=tmp[self.N-self.K:]
     return np.sort(frozen_bits),np.sort(info_bits)
@@ -80,11 +69,6 @@ class coding(coding):
     res=tmp[0:l]
     return res
 
-
-# In[6]:
-
-
-class coding(coding):
   @staticmethod
   def tensordot(A):
     tmp0=np.zeros((A.shape[0],A.shape[1]),dtype=np.int)
@@ -105,8 +89,7 @@ class coding(coding):
     return Gres
 
 
-# In[7]:
-
+# In[15]:
 
 class encoding(coding):
     def __init__(self,N):
@@ -117,21 +100,11 @@ class encoding(coding):
         information=np.random.randint(0,2,self.K)
         return information
 
-
-# In[17]:
-
-
-class encoding(encoding):
     def generate_U(self,information):
         u_message=np.zeros(self.N)
         u_message[self.info_bits]=information
         return u_message
 
-
-# In[18]:
-
-
-class encoding(encoding):
     def polar_encode(self):
         information=self.generate_information()
         u_message=self.generate_U(information)
@@ -139,7 +112,7 @@ class encoding(encoding):
         return information,codeword
 
 
-# In[10]:
+# In[18]:
 
 
 #これを使ったほうが計算が早い
@@ -164,7 +137,7 @@ def encode(self,u_message):
 '''
 
 
-# In[11]:
+# In[19]:
 
 
 #0,1が逆になって設計されているので、ちゃんと治す必要あり
@@ -175,7 +148,7 @@ class decoding(coding):
 
   def __init__(self,N):
     super().__init__(N)
-
+    
   @staticmethod
   def chk(llr_1,llr_2):
     CHECK_NODE_TANH_THRES=30
@@ -192,6 +165,9 @@ class decoding(coding):
       else:
         res[i]= 2 * np.arctanh(np.tanh(llr_1[i] / 2, ) * np.tanh(llr_2[i] / 2))
     return res
+
+  def print(self,a):
+    print(a)
 
   def SC_decoding(self,a):
     #interior node operation
@@ -211,7 +187,7 @@ class decoding(coding):
         decoding.EST_information=np.append(decoding.EST_information,a)
       #print(decoding.n)
       #print(t)
-      decoding.n+=1
+      #decoding.n+=1
       #if t>=N:
         #exit()
       return tmp0
@@ -230,35 +206,28 @@ class decoding(coding):
     #step3 up input u1,u2 output a_hat
     res=np.concatenate([(u1+u2)%2,u2])
     return res
+    
+
+  def polar_decode(self,Lc):
+      #initialize class variable
+      decoding.n=0
+      decoding.EST_information=np.array([])
+      self.SC_decoding(Lc)
+      res=decoding.EST_information
+      res=-1*np.sign(res)
+      EST_information=(res+1)/2
+
+      return EST_information
 
 
-# In[19]:
+# In[29]:
 
 
-class decoding(decoding):
-    def polar_decode(self,Lc):
-        #initialize class variable
-        decoding.n=0
-        decoding.EST_information=np.array([])
-        self.SC_decoding(Lc)
-        res=decoding.EST_information
-        res=-1*np.sign(res)
-        EST_information=(res+1)/2
-
-        return EST_information
-
-
-# In[20]:
-
-
-#@ray.remote
 class polar_code(encoding,decoding):
     def __init__(self,N):
         super().__init__(N)
 
-    def polar_code(self,EbNodB):
-        
-
+    def main_func(self,EbNodB): 
         information,codeword=self.polar_encode()
 
         Lc=-1*ch.generate_LLR(codeword,EbNodB)#デコーダが＋、ー逆になってしまうので-１をかける
@@ -266,21 +235,17 @@ class polar_code(encoding,decoding):
         EST_information=self.polar_decode(Lc)
         
         return information,EST_information
+    
+    
 
 
-# In[21]:
+# In[30]:
 
 
 if __name__=="__main__":
-    
+
     N=512
     pc=polar_code(N)
-    
-    print(len(pc.info_bits))
-    information,EST_information=pc.polar_code(100)
-    print(len(information))
-    print(len(EST_information))
-    print(np.sum(information!=EST_information))
 
     def output(EbNodB):
       count_err=0
@@ -290,8 +255,9 @@ if __name__=="__main__":
       MAX_ERR=8
 
       while count_err<MAX_ERR:
-
-        information,EST_information=pc.polar_code(EbNodB)
+        
+        pc=polar_code(N)
+        information,EST_information=pc.main_func(EbNodB)
       
         if np.any(information!=EST_information):#BLOCK error check
           count_err+=1
@@ -304,11 +270,15 @@ if __name__=="__main__":
 
         print("\r","count_all=",count_all,",count_err=",count_err,"count_ball="              ,count_ball,"count_berr=",count_berr,end="")
 
-      print("\n")
+        print("\n")
       print("BER=",count_berr/count_ball)
+      return  count_err,count_all,count_berr,count_all
     
-    for EbNodB in range(-3,5):
-      output(EbNodB)
+    output(1)
+    
+
+
+# In[ ]:
 
 
 
