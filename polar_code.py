@@ -6,6 +6,7 @@
 
 #必要なライブラリ、定数
 
+from warnings import resetwarnings
 import numpy as np
 import math
 from decimal import *
@@ -25,6 +26,11 @@ class coding():
       self.R=0.5
       self.K=math.floor(self.R*self.N)
       self.design_SNR=4
+
+      #for decoder
+      self.n=0#calcurate codeword number
+      self.k=0#calcurate information number
+      self.EST_information=np.zeros(self.K)
 
       #prepere constants
       tmp2=np.log2(self.N)
@@ -92,24 +98,24 @@ class coding():
 # In[15]:
 
 class encoding(coding):
-    def __init__(self,N):
-        super().__init__(N)
-    
-    def generate_information(self):
-        #generate information
-        information=np.random.randint(0,2,self.K)
-        return information
+  def __init__(self,N):
+      super().__init__(N)
+  
+  def generate_information(self):
+      #generate information
+      information=np.random.randint(0,2,self.K)
+      return information
 
-    def generate_U(self,information):
-        u_message=np.zeros(self.N)
-        u_message[self.info_bits]=information
-        return u_message
+  def generate_U(self,information):
+      u_message=np.zeros(self.N)
+      u_message[self.info_bits]=information
+      return u_message
 
-    def polar_encode(self):
-        information=self.generate_information()
-        u_message=self.generate_U(information)
-        codeword=(u_message@self.Gres)%2
-        return information,codeword
+  def polar_encode(self):
+      information=self.generate_information()
+      u_message=self.generate_U(information)
+      codeword=(u_message@self.Gres)%2
+      return information,codeword
 
 
 # In[18]:
@@ -143,8 +149,6 @@ def encode(self,u_message):
 #0,1が逆になって設計されているので、ちゃんと治す必要あり
 
 class decoding(coding):
-  n=0
-  EST_information=np.array([])
 
   def __init__(self,N):
     super().__init__(N)
@@ -166,30 +170,33 @@ class decoding(coding):
         res[i]= 2 * np.arctanh(np.tanh(llr_1[i] / 2, ) * np.tanh(llr_2[i] / 2))
     return res
 
-  def print(self,a):
-    print(a)
-
   def SC_decoding(self,a):
+    
     #interior node operation
     if a.shape[0]==1:
+
       #frozen_bit or not
-      if np.any(self.frozen_bits==decoding.n):
+      if np.any(self.frozen_bits==self.n):
+        #print(decoding.check)
         tmp0=np.zeros(1)
-      elif a>=0:
-        tmp0=np.zeros(1)
-      elif a<0:
-        tmp0=np.ones(1)
-      else:
-        print("err!")
-        exit()
       
-      if np.any(self.info_bits==decoding.n):
-        decoding.EST_information=np.append(decoding.EST_information,a)
+      else :
+        self.EST_information[self.k]=a
+        self.k+=1
+        #print(decoding.EST_information)
+
+        if a>=0:
+          tmp0=np.zeros(1)
+        elif a<0:
+          tmp0=np.ones(1)
       #print(decoding.n)
       #print(t)
       #decoding.n+=1
       #if t>=N:
         #exit()
+      
+      self.n+=1
+
       return tmp0
 
     #step1 left input a output u1_hat
@@ -209,77 +216,92 @@ class decoding(coding):
     
 
   def polar_decode(self,Lc):
-      #initialize class variable
-      decoding.n=0
-      decoding.EST_information=np.array([])
-      self.SC_decoding(Lc)
-      res=decoding.EST_information
-      res=-1*np.sign(res)
-      EST_information=(res+1)/2
+    #initialize 
+    self.n=0
+    self.k=0
 
-      return EST_information
+    self.SC_decoding(Lc)
+    res=self.EST_information
+    #err chenck
+    if len(res)!=self.K:
+      print("information length error")
+      print(len(self.frozen_bits))
+      print(self.n)
+      print(len(res))
+      exit()
+    res=-1*np.sign(res)
+    EST_information=(res+1)/2
+
+    return EST_information
 
 
 # In[29]:
 
-
 class polar_code(encoding,decoding):
-    def __init__(self,N):
-        super().__init__(N)
+  def __init__(self,N):
+      super().__init__(N)
 
-    def main_func(self,EbNodB): 
-        information,codeword=self.polar_encode()
+  def main_func(self,EbNodB): 
+      information,codeword=self.polar_encode()
+      Lc=-1*ch.generate_LLR(codeword,EbNodB)#デコーダが＋、ー逆になってしまうので-１をかける
 
-        Lc=-1*ch.generate_LLR(codeword,EbNodB)#デコーダが＋、ー逆になってしまうので-１をかける
-        
-        EST_information=self.polar_decode(Lc)
-        
-        return information,EST_information
-    
-    
-
+      EST_information=self.polar_decode(Lc)      
+      return information,EST_information
 
 # In[30]:
 
+#pc=polar_code(8)
+#information,codeword=pc.polar_encode()
+#Lc=-1*ch.generate_LLR(codeword,100)
+#print(information)
+#EST_information=pc.polar_decode(Lc)
+#print(EST_information)
 
 if __name__=="__main__":
 
-    N=512
-    pc=polar_code(N)
+  N=512
+  pc=polar_code(N)
 
-    def output(EbNodB):
-      count_err=0
-      count_all=0
-      count_berr=0
-      count_ball=0
-      MAX_ERR=8
+  def output(EbNodB):
+    count_err=0
+    count_all=0
+    count_berr=0
+    count_ball=0
+    MAX_ERR=8
 
-      while count_err<MAX_ERR:
-        
-        pc=polar_code(N)
-        information,EST_information=pc.main_func(EbNodB)
+    #seed値の設定
+    np.random.seed()
+
+    while count_err<MAX_ERR:
       
-        if np.any(information!=EST_information):#BLOCK error check
-          count_err+=1
-        
-        count_all+=1
-
-        #calculate bit error rate 
-        count_berr+=np.sum(information!=EST_information)
-        count_ball+=N
-
-        print("\r","count_all=",count_all,",count_err=",count_err,"count_ball="              ,count_ball,"count_berr=",count_berr,end="")
-
-        print("\n")
-      print("BER=",count_berr/count_ball)
-      return  count_err,count_all,count_berr,count_all
+      information,EST_information=pc.main_func(EbNodB)
     
-    output(1)
+      if np.any(information!=EST_information):#BLOCK error check
+        count_err+=1
+      
+      count_all+=1
+
+      #calculate bit error rate 
+      count_berr+=np.sum(information!=EST_information)
+      count_ball+=len(information)
+
+      print("\r","count_all=",count_all,",count_err=",count_err,"count_ball=",count_ball,"count_berr=",count_berr,end="")
+      #import pdb; pdb.set_trace()
+
+    print("BER=",count_berr/count_ball)
+    return  count_err,count_all,count_berr,count_all
+  
+  output(100)
+    
     
 
 
 # In[ ]:
 
+  #for i in range(-5,4):
+      #print(i)
+
+      #print(output(i))
 
 
 

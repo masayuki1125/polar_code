@@ -16,6 +16,9 @@ from AWGN import _AWGN
 
 ray.init()
 
+#%%
+
+
 
 # In[ ]:
 
@@ -41,7 +44,7 @@ def output(dumped,EbNodB):
         
 
         while count_err<MAX_ERR:
-        #print("\r"+str(count_err),end="")
+            #print("\r"+str(count_err),end="")
             information,EST_information=cd.main_func(EbNodB)
             
             #calculate block error rate
@@ -64,8 +67,8 @@ class MC():
         self.TX_antenna=1
         self.RX_antenna=1
         self.MAX_ERR=8
-        self.EbNodB_start=-5
-        self.EbNodB_end=1
+        self.EbNodB_start=-3
+        self.EbNodB_end=5
         self.EbNodB_range=np.arange(self.EbNodB_start,self.EbNodB_end,0.5) #0.5dBごとに測定
 
     #特定のNに関する出力
@@ -167,11 +170,10 @@ class savetxt(polar_code,_AWGN,MC):
 
 
 # In[ ]:
-
 if __name__=="__main__":
     mc=MC()
 
-    N_list=[512,1024,2048,4096]
+    N_list=[512,1024]
     result_ids_array=[]
     print(mc.EbNodB_range)
     for i,N in enumerate(N_list):
@@ -179,5 +181,51 @@ if __name__=="__main__":
         dumped=pickle.dumps(cd)
         print("N=",N)
         result_ids_array.append(mc.monte_carlo_get_ids(dumped))
-    
+
     mc.monte_carlo_calc(result_ids_array,N_list)
+'''
+#@ray.remote
+def output1(EbNodB):
+
+    #cd=pickle.loads(dumped)
+
+    count_err=0
+    count_all=0
+    count_berr=0
+    count_ball=0
+    MAX_ERR=8
+
+    while count_err<MAX_ERR:
+    
+        information,EST_information=cd.main_func(EbNodB)
+        
+        if np.any(information!=EST_information):#BLOCK error check
+            count_err+=1
+        
+        count_all+=1
+
+        #calculate bit error rate 
+        count_berr+=np.sum(information!=EST_information)
+        count_ball+=len(information)
+
+        print("\r","count_all=",count_all,",count_err=",count_err,"count_ball=",count_ball,"count_berr=",count_berr,end="")
+
+    print("BER=",count_berr/count_ball)
+
+    return  count_err,count_all,count_berr,count_all
+
+N=512
+cd=polar_code(N)
+#dumped=pickle.dumps(cd)
+print(output1(10))
+#result=output1.remote(dumped,10)
+#print(ray.get(result))
+
+
+
+#result=output.remote(dumped,10)
+#ray.get(result)
+
+#result=output.remote(dumped,10)
+#ray.get(result)
+'''
