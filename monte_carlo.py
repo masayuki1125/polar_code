@@ -16,10 +16,6 @@ from AWGN import _AWGN
 
 ray.init()
 
-#%%
-
-
-
 # In[ ]:
 
 
@@ -173,7 +169,7 @@ class savetxt(polar_code,_AWGN,MC):
 if __name__=="__main__":
     mc=MC()
 
-    N_list=[512,1024]
+    N_list=[2048,4096]
     result_ids_array=[]
     print(mc.EbNodB_range)
     for i,N in enumerate(N_list):

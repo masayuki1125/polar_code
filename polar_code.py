@@ -20,26 +20,27 @@ ch=_AWGN()
 
 class coding():
   def __init__(self,N):
-      super().__init__()
+    super().__init__()
 
-      self.N=N
-      self.R=0.5
-      self.K=math.floor(self.R*self.N)
-      self.design_SNR=4
+    self.N=N
+    self.R=0.5
+    self.K=math.floor(self.R*self.N)
+    self.design_SNR=4
 
-      #for decoder
-      self.n=0#calcurate codeword number
-      self.k=0#calcurate information number
-      self.EST_information=np.zeros(self.K)
+    #for decoder
+    self.n=0#calcurate codeword number
+    self.k=0#calcurate information number
+    self.EST_information=np.zeros(self.K)
 
-      #prepere constants
-      tmp2=np.log2(self.N)
-      self.itr_num=tmp2.astype(int)
-      self.frozen_bits,self.info_bits=self.Bhattacharyya_bounds()
+    #prepere constants
+    tmp2=np.log2(self.N)
+    self.itr_num=tmp2.astype(int)
+    self.frozen_bits,self.info_bits=self.Bhattacharyya_bounds()
+    self.bit_reversal_sequence=self.reverse_bits()
 
-      self.Gres=self.make_H()
+    self.Gres=self.make_H() #no need
 
-      self.filename="polar_code_{}_{}".format(self.N,self.K)
+    self.filename="polar_code_{}_{}".format(self.N,self.K)
 
   #frozen_bitの選択
   def Bhattacharyya_bounds(self):
@@ -75,22 +76,34 @@ class coding():
     res=tmp[0:l]
     return res
 
+  def reverse_bits(self):
+      res=np.zeros(self.N,dtype=int)
+
+      for i in range(self.N):
+        tmp=format (i,'b')
+        tmp=tmp.zfill(self.itr_num+1)[:0:-1]
+        #print(tmp) 
+        res[i]=int(tmp,2)
+      
+      return res
+  
+  #make parity check matrix
+
   @staticmethod
   def tensordot(A):
     tmp0=np.zeros((A.shape[0],A.shape[1]),dtype=np.int)
     tmp1=np.append(A,tmp0,axis=1)
-    #print(tmp1)
+    print(tmp1)
     tmp2=np.append(A,A,axis=1)
-    #print(tmp2)
+    print(tmp2)
     tmp3=np.append(tmp1,tmp2,axis=0)
-    #print(tmp3)
+    print(tmp3)
     return tmp3
 
   def make_H(self):
     G2=np.array([[1,0],[1,1]],dtype=np.int)
     Gres=G2
     for _ in range(self.itr_num-1):
-      #print(i)
       Gres=self.tensordot(Gres)
     return Gres
 
@@ -99,32 +112,19 @@ class coding():
 
 class encoding(coding):
   def __init__(self,N):
-      super().__init__(N)
-  
+    super().__init__(N)
+
   def generate_information(self):
-      #generate information
-      information=np.random.randint(0,2,self.K)
-      return information
+    #generate information
+    information=np.random.randint(0,2,self.K)
+    return information
 
   def generate_U(self,information):
-      u_message=np.zeros(self.N)
-      u_message[self.info_bits]=information
-      return u_message
+    u_message=np.zeros(self.N)
+    u_message[self.info_bits]=information
+    return u_message
 
-  def polar_encode(self):
-      information=self.generate_information()
-      u_message=self.generate_U(information)
-      codeword=(u_message@self.Gres)%2
-      return information,codeword
-
-
-# In[18]:
-
-
-#これを使ったほうが計算が早い
-'''
-%%add_to encoding
-def encode(self,u_message):
+  def encode(self,u_message):
     """
     Implements the polar transform on the given message in a recursive way (defined in Arikan's paper).
     :param u_message: An integer array of N bits which are to be transformed;
@@ -138,10 +138,15 @@ def encode(self,u_message):
         u1u2 = np.logical_xor(u_message[::2] , u_message[1::2])
         u2 = u_message[1::2]
 
-        codeword = np.concatenate([encode(u1u2), encode(u2)])
+        codeword = np.concatenate([self.encode(u1u2), self.encode(u2)])
     return codeword
-'''
 
+  def polar_encode(self):
+    information=self.generate_information()
+    u_message=self.generate_U(information)
+    #codeword=self.encode(u_message[self.bit_reversal_sequence])
+    codeword=u_message@self.Gres%2
+    return information,codeword
 
 # In[19]:
 
@@ -239,14 +244,17 @@ class decoding(coding):
 
 class polar_code(encoding,decoding):
   def __init__(self,N):
-      super().__init__(N)
+    super().__init__(N)
 
   def main_func(self,EbNodB): 
-      information,codeword=self.polar_encode()
-      Lc=-1*ch.generate_LLR(codeword,EbNodB)#デコーダが＋、ー逆になってしまうので-１をかける
+    information,codeword=self.polar_encode()
+    Lc=-1*ch.generate_LLR(codeword,EbNodB)#デコーダが＋、ー逆になってしまうので-１をかける
+    EST_information=self.polar_decode(Lc)   
+    if len(EST_information)!=len(information):
+      print("len_err")
+      exit()
 
-      EST_information=self.polar_decode(Lc)      
-      return information,EST_information
+    return information,EST_information
 
 # In[30]:
 
@@ -259,7 +267,7 @@ class polar_code(encoding,decoding):
 
 if __name__=="__main__":
 
-  N=512
+  N=2048
   pc=polar_code(N)
 
   def output(EbNodB):
@@ -291,7 +299,7 @@ if __name__=="__main__":
     print("BER=",count_berr/count_ball)
     return  count_err,count_all,count_berr,count_all
   
-  output(100)
+  output(4)
     
     
 
