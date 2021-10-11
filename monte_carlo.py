@@ -32,14 +32,14 @@ def output(dumped,EbNodB):
         np.random.seed()
 
         #prepare some constants
-        MAX_ERR=1
+        MAX_BITALL=10**6
         count_bitall=0
         count_biterr=0
         count_all=0
         count_err=0
         
 
-        while count_err<MAX_ERR:
+        while count_bitall<MAX_BITALL:
             #print("\r"+str(count_err),end="")
             information,EST_information=cd.main_func(EbNodB)
             
@@ -62,9 +62,9 @@ class MC():
     def __init__(self):
         self.TX_antenna=1
         self.RX_antenna=1
-        self.MAX_ERR=8
-        self.EbNodB_start=-3
-        self.EbNodB_end=5
+        self.MAX_ERR=12
+        self.EbNodB_start=-5
+        self.EbNodB_end=1
         self.EbNodB_range=np.arange(self.EbNodB_start,self.EbNodB_end,0.5) #0.5dBごとに測定
 
     #特定のNに関する出力
@@ -130,9 +130,9 @@ class MC():
                 BLER[j]=count_err/count_all
                 BER[j]=count_biterr/count_bitall
 
-                if count_biterr/count_bitall<10**-5:
-                    print("finish")
-                    break
+                #if count_biterr/count_bitall<10**-4:
+                    #print("finish")
+                    #break
 
                 print("\r"+"EbNodB="+str(EbNodB)+",BLER="+str(BLER[j])+",BER="+str(BER[j]),end="")
             
@@ -159,7 +159,6 @@ class savetxt(polar_code,_AWGN,MC):
         print("#TX_antenna="+str(self.TX_antenna),file=f)
         print("#RX_antenna="+str(self.RX_antenna),file=f)
         print("#modulation_symbol="+str(self.M),file=f)
-        print("#MAX_BLERR="+str(self.MAX_ERR),file=f)
         print("#EsNodB,BLER,BER",file=f) 
         for i in range(len(self.EbNodB_range)):
             print(str(self.EbNodB_range[i]),str(BLER[i]),str(BER[i]),file=f)
@@ -169,7 +168,7 @@ class savetxt(polar_code,_AWGN,MC):
 if __name__=="__main__":
     mc=MC()
 
-    N_list=[2048,4096]
+    N_list=[512,1024,2048,4096]
     result_ids_array=[]
     print(mc.EbNodB_range)
     for i,N in enumerate(N_list):

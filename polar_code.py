@@ -1,12 +1,9 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[11]:
+# In[56]:
 
 
-#必要なライブラリ、定数
-
-from warnings import resetwarnings
 import numpy as np
 import math
 from decimal import *
@@ -15,7 +12,7 @@ from AWGN import _AWGN
 ch=_AWGN()
 
 
-# In[12]:
+# In[57]:
 
 
 class coding():
@@ -25,7 +22,24 @@ class coding():
     self.N=N
     self.R=0.5
     self.K=math.floor(self.R*self.N)
-    self.design_SNR=4
+    self.design_SNR=1
+
+    #for construction
+    self.G_0=0.2
+    self.G_1=0.7
+    self.G_2=10
+    self.a0=-0.002706
+    self.a1=-0.476711
+    self.a2=0.0512
+    self.a=-0.4527
+    self.b=0.0218
+    self.c=0.86
+    self.K_0=8.554
+
+    self.Z_0=self.xi(self.G_0)
+    self.Z_1=self.xi(self.G_1)
+    self.Z_2=self.xi(self.G_2)
+
 
     #for decoder
     self.n=0#calcurate codeword number
@@ -35,13 +49,182 @@ class coding():
     #prepere constants
     tmp2=np.log2(self.N)
     self.itr_num=tmp2.astype(int)
-    self.frozen_bits,self.info_bits=self.Bhattacharyya_bounds()
     self.bit_reversal_sequence=self.reverse_bits()
+    
+    #choose construnction
+    #self.frozen_bits,self.info_bits=self.Bhattacharyya_bounds()
+    self.frozen_bits,self.info_bits=self.Improved_GA()
 
-    self.Gres=self.make_H() #no need
+    #self.Gres=self.make_H() #no need
 
     self.filename="polar_code_{}_{}".format(self.N,self.K)
 
+
+# In[58]:
+
+
+class coding(coding):
+  def reverse_bits(self):
+    res=np.zeros(self.N,dtype=int)
+
+    for i in range(self.N):
+      tmp=format (i,'b')
+      tmp=tmp.zfill(self.itr_num+1)[:0:-1]
+      #print(tmp) 
+      res[i]=self.reverse(i)
+    return res
+
+  def reverse(self,n):
+    tmp=format (n,'b')
+    tmp=tmp.zfill(self.itr_num+1)[:0:-1]
+    res=int(tmp,2) 
+    return res
+
+
+# In[59]:
+
+
+class coding(coding):
+   
+  def xi(self,gamma):
+
+    if gamma<=self.G_0:
+      zeta=-1*gamma/2+(gamma**2)/8-(gamma**3)/8
+    
+    elif self.G_0<gamma<=self.G_1:
+      zeta=self.a0+self.a1*gamma+self.a2*(gamma**2)
+
+    elif self.G_1<gamma<self.G_2:
+      zeta=self.a*(gamma**self.c)+self.b
+
+    elif self.G_2<=gamma:
+      zeta=-1*gamma/4+math.log(math.pi)/2-math.log(gamma)/2+math.log(1-(math.pi**2)/(4*gamma)+self.K_0/(gamma**2))
+    
+    if zeta>0:
+      print("zeta is + err")
+
+    return zeta
+
+  def xi_inv(self,zeta):
+
+    if self.Z_0<=zeta:
+      gamma=-2*zeta+zeta**2+zeta**3
+
+    elif self.Z_1<=zeta<self.Z_0:
+      gamma=(-1*self.a1-(self.a1**2-4*self.a2*(self.a0-zeta))**(1/2))/(2*self.a2)
+
+    elif self.Z_2<zeta<self.Z_1:
+      gamma=((zeta-self.b)/self.a)**(1/self.c)
+
+    elif zeta<=self.Z_2:
+      gamma=self.bisection_method(zeta)
+      #gamma=-4*zeta
+
+    if gamma<0:
+      print("gamma is - err")
+
+    return gamma
+
+
+# In[60]:
+
+
+class coding(coding):
+  def bisection_method(self,zeta):
+
+    #set constant
+    min_num=self.G_2
+    max_num=10**7
+    error_accept=1
+
+    def f(x):
+      zeta=-1*x/4+math.log(math.pi)/2-math.log(x)/2+math.log(1-(math.pi**2)/(4*x)+self.K_0/(x**2))
+      return zeta
+
+    #initial value
+    a=min_num
+    b=max_num
+    error=b-a
+
+    #very small zeta situation
+    if f(max_num)>zeta:
+      print(f(max_num))
+      print(zeta)
+      gamma=max_num
+
+    else:
+
+      while error>error_accept:
+        c=(b+a)/2 #center value
+
+        if f(c)>=zeta:
+          a=c
+          error=b-a
+        
+        elif f(c)<zeta:
+          b=c
+          error=b-a
+        
+        if error<0:
+          print("something is wrong")
+        #print("\r",error,end="")
+      
+      gamma=(b+a)/2
+
+      if gamma<0:
+        print("gamma is - err")
+
+    return gamma
+
+
+# In[61]:
+
+
+class coding(coding):
+    
+  def Improved_GA(self,bit_reverse=True):
+    gamma=np.zeros(self.N)
+    
+    gamma[0]=4*self.design_SNR
+    for i in range(1,self.itr_num+1):
+      J=2**(i-1)
+      for j in range(0,J):
+        u=gamma[j]
+        if u<=self.G_0:
+          gamma[j]=(u**2)/2-(u**3)/2+2*(u**4)/3
+        else:
+          z=self.xi(u)
+          gamma[j]=self.xi_inv(z+math.log(2-math.e**z))
+        
+        gamma[j+J]=2*u
+  
+    tmp=self.indices_of_elements(gamma,self.N)
+    frozen_bits=np.sort(tmp[:self.N-self.K])
+    info_bits=np.sort(tmp[self.N-self.K:])
+
+    if bit_reverse==True:
+      for i in range(len(frozen_bits)):
+        frozen_bits[i]=self.reverse(frozen_bits[i])
+      frozen_bits=np.sort(frozen_bits)
+
+      for i in range(len(info_bits)):
+        info_bits[i]=self.reverse(info_bits[i])
+      info_bits=np.sort(info_bits)
+
+    return frozen_bits,info_bits
+
+  @staticmethod
+  def indices_of_elements(v,l):
+    tmp=np.argsort(v)
+    res=tmp[0:l]
+    return res
+
+
+# In[62]:
+
+
+'''
+class coding(coding):
   #frozen_bitの選択
   def Bhattacharyya_bounds(self):
     E=np.zeros(1,dtype=np.float128)
@@ -75,19 +258,15 @@ class coding():
     #print(tmp)
     res=tmp[0:l]
     return res
+'''
 
-  def reverse_bits(self):
-      res=np.zeros(self.N,dtype=int)
 
-      for i in range(self.N):
-        tmp=format (i,'b')
-        tmp=tmp.zfill(self.itr_num+1)[:0:-1]
-        #print(tmp) 
-        res[i]=int(tmp,2)
-      
-      return res
-  
-  #make parity check matrix
+# In[63]:
+
+
+'''
+class coding(coding):
+    #make parity check matrix
 
   @staticmethod
   def tensordot(A):
@@ -106,9 +285,11 @@ class coding():
     for _ in range(self.itr_num-1):
       Gres=self.tensordot(Gres)
     return Gres
+'''
 
 
-# In[15]:
+# In[64]:
+
 
 class encoding(coding):
   def __init__(self,N):
@@ -144,20 +325,19 @@ class encoding(coding):
   def polar_encode(self):
     information=self.generate_information()
     u_message=self.generate_U(information)
-    #codeword=self.encode(u_message[self.bit_reversal_sequence])
-    codeword=u_message@self.Gres%2
+    codeword=self.encode(u_message[self.bit_reversal_sequence])
+    #codeword=u_message@self.Gres%2
     return information,codeword
 
-# In[19]:
 
+# In[65]:
 
-#0,1が逆になって設計されているので、ちゃんと治す必要あり
 
 class decoding(coding):
 
   def __init__(self,N):
     super().__init__(N)
-    
+   
   @staticmethod
   def chk(llr_1,llr_2):
     CHECK_NODE_TANH_THRES=30
@@ -174,7 +354,7 @@ class decoding(coding):
       else:
         res[i]= 2 * np.arctanh(np.tanh(llr_1[i] / 2, ) * np.tanh(llr_2[i] / 2))
     return res
-
+  
   def SC_decoding(self,a):
     
     #interior node operation
@@ -182,44 +362,43 @@ class decoding(coding):
 
       #frozen_bit or not
       if np.any(self.frozen_bits==self.n):
-        #print(decoding.check)
         tmp0=np.zeros(1)
       
       else :
         self.EST_information[self.k]=a
         self.k+=1
-        #print(decoding.EST_information)
 
         if a>=0:
           tmp0=np.zeros(1)
         elif a<0:
           tmp0=np.ones(1)
-      #print(decoding.n)
-      #print(t)
-      #decoding.n+=1
-      #if t>=N:
-        #exit()
       
       self.n+=1
 
       return tmp0
 
-    #step1 left input a output u1_hat
+    
+    #tmp=np.reshape(a,[2,len(a)//2],order="F")
+    tmp=np.split(a,2,axis=0)
 
-    tmp1=np.split(a,2)
-    f_half_a=self.chk(tmp1[0],tmp1[1])
+    #step1 left input a output u1_hat
+    f_half_a=self.chk(tmp[0],tmp[1])
+    #f_half_a=tmp1[0]+tmp1[1]
     u1=self.SC_decoding(f_half_a)
 
     #step2 right input a,u1_hat output u2_hat 
-    tmp2=np.split(a,2)
-    g_half_a=tmp2[1]+(1-2*u1)*tmp2[0] 
+    g_half_a=tmp[1]+(1-2*u1)*tmp[0] #
     u2=self.SC_decoding(g_half_a)
   
     #step3 up input u1,u2 output a_hat
     res=np.concatenate([(u1+u2)%2,u2])
     return res
-    
 
+
+# In[66]:
+
+
+class decoding(decoding):
   def polar_decode(self,Lc):
     #initialize 
     self.n=0
@@ -230,17 +409,16 @@ class decoding(coding):
     #err chenck
     if len(res)!=self.K:
       print("information length error")
-      print(len(self.frozen_bits))
-      print(self.n)
-      print(len(res))
       exit()
+      
     res=-1*np.sign(res)
     EST_information=(res+1)/2
 
     return EST_information
 
 
-# In[29]:
+# In[67]:
+
 
 class polar_code(encoding,decoding):
   def __init__(self,N):
@@ -256,60 +434,43 @@ class polar_code(encoding,decoding):
 
     return information,EST_information
 
-# In[30]:
 
-#pc=polar_code(8)
-#information,codeword=pc.polar_encode()
-#Lc=-1*ch.generate_LLR(codeword,100)
-#print(information)
-#EST_information=pc.polar_decode(Lc)
-#print(EST_information)
+# In[69]:
+
 
 if __name__=="__main__":
 
-  N=2048
-  pc=polar_code(N)
+    N=2048
+    pc=polar_code(N)
+    #a,b=pc.main_func(1)
+    #print(len(a))
+    #print(len(b))
+    def output(EbNodB):
+      count_err=0
+      count_all=0
+      count_berr=0
+      count_ball=0
+      MAX_ERR=8
 
-  def output(EbNodB):
-    count_err=0
-    count_all=0
-    count_berr=0
-    count_ball=0
-    MAX_ERR=8
-
-    #seed値の設定
-    np.random.seed()
-
-    while count_err<MAX_ERR:
+      while count_err<MAX_ERR:
+        
+        pc=polar_code(N)
+        information,EST_information=pc.main_func(EbNodB)
       
-      information,EST_information=pc.main_func(EbNodB)
+        if np.any(information!=EST_information):#BLOCK error check
+          count_err+=1
+        
+        count_all+=1
+
+        #calculate bit error rate 
+        count_berr+=np.sum(information!=EST_information)
+        count_ball+=N
+
+        print("\r","count_all=",count_all,",count_err=",count_err,"count_ball="              ,count_ball,"count_berr=",count_berr,end="")
+
+      print("BER=",count_berr/count_ball)
+      return  count_err,count_all,count_berr,count_all
     
-      if np.any(information!=EST_information):#BLOCK error check
-        count_err+=1
-      
-      count_all+=1
-
-      #calculate bit error rate 
-      count_berr+=np.sum(information!=EST_information)
-      count_ball+=len(information)
-
-      print("\r","count_all=",count_all,",count_err=",count_err,"count_ball=",count_ball,"count_berr=",count_berr,end="")
-      #import pdb; pdb.set_trace()
-
-    print("BER=",count_berr/count_ball)
-    return  count_err,count_all,count_berr,count_all
-  
-  output(4)
+    output(3)
     
-    
-
-
-# In[ ]:
-
-  #for i in range(-5,4):
-      #print(i)
-
-      #print(output(i))
-
-
 
