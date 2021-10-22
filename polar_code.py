@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[93]:
+# In[31]:
 
 
 import numpy as np
@@ -12,7 +12,7 @@ from AWGN import _AWGN
 ch=_AWGN()
 
 
-# In[94]:
+# In[32]:
 
 
 class coding():
@@ -121,7 +121,6 @@ class coding():
     tmp=tmp.zfill(self.itr_num+1)[:0:-1]
     res=int(tmp,2) 
     return res
-
    
   def xi(self,gamma):
 
@@ -208,6 +207,7 @@ class coding():
 
     return gamma
 
+    
   def Improved_GA(self,K,bit_reverse=True):
     gamma=np.zeros(self.N)
     
@@ -245,7 +245,8 @@ class coding():
     res=tmp[0:l]
     return res
 
-# In[102]:
+
+# In[39]:
 
 
 class encoding(coding):
@@ -266,6 +267,9 @@ class encoding(coding):
         CRC_info[i],memory=self.left_cyclic(information[i],self.CRC_polynomial,memory)
       
       CRC_info[self.K:]=memory
+
+      if self.CRC_check(CRC_info)==False:
+        print("CRC_err")
 
       return CRC_info
       
@@ -300,7 +304,7 @@ class encoding(coding):
     return information,codeword
 
 
-# In[103]:
+# In[40]:
 
 
 class decoding(coding):
@@ -324,6 +328,7 @@ class decoding(coding):
       else:
         res[i]= 2 * np.arctanh(np.tanh(llr_1[i] / 2, ) * np.tanh(llr_2[i] / 2))
     return res
+
 
   def SC_decoding(self,Lc):
     #initialize constant    
@@ -376,7 +381,7 @@ class decoding(coding):
         before_process=2
       
       else:
-        print("error!")
+        print("encode error!")
 
       #leaf node operation
       if depth==self.itr_num:
@@ -526,12 +531,19 @@ class decoding(coding):
     #CRC_check
     res_list_num=0
     for i in range(self.list_size):
-      if self.CRC_check(EST_codeword[i,self.itr_num])==True:
+      if self.CRC_check(EST_codeword[i,self.itr_num][self.info_bits])==True:
         res_list_num=i
-        break
+        print("ture")
+        
+   #print("CRC_err")
     
     return EST_codeword[res_list_num,self.itr_num]
 
+
+# In[43]:
+
+
+class decoding(decoding):
   def polar_decode(self,Lc):
     '''
     polar_decode
@@ -553,7 +565,8 @@ class decoding(coding):
     return EST_information
 
 
-# In[108]:
+# In[44]:
+
 
 class polar_code(encoding,decoding):
   def __init__(self,N):
@@ -570,7 +583,8 @@ class polar_code(encoding,decoding):
     return information,EST_information
 
 
-# In[109]:
+# In[45]:
+
 
 if __name__=="__main__":
 
