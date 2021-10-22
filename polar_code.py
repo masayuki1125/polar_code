@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[31]:
+# In[65]:
 
 
 import numpy as np
@@ -12,7 +12,7 @@ from AWGN import _AWGN
 ch=_AWGN()
 
 
-# In[32]:
+# In[66]:
 
 
 class coding():
@@ -69,43 +69,53 @@ class coding():
       #construction
       self.frozen_bits,self.info_bits=self.Improved_GA(self.K+self.CRC_len-1)
 
+
+# In[67]:
+
+
+class coding(coding):
   @staticmethod
-  def left_cyclic(data,polynomial,memory):
-    tmp=np.zeros(len(memory)+1,dtype=int)
-    tmp[0]=data
-    tmp[1:]=memory
-    res=np.sum(tmp*polynomial)%2
-    memory=tmp[:len(memory)]
-    return res,memory
-  
-  @staticmethod
-  def right_cyclic(data,polynomial,memory):
-    tmp=np.zeros(len(memory)+1,dtype=int)
+  def cyclic(data,polynomial,memory):
+    tmp=-1*np.ones(len(memory)+1,dtype=int)
     tmp[len(tmp)-1]=data
     pre_data=memory[0]
     tmp[:len(tmp)-1]=memory
 
-    for i in range(len(polynomial)):
+    for i in range(len(polynomial)-1):
       if polynomial[i]==1:
-        tmp[i]=pre_data*tmp[i-1]%2
+        tmp[i]=(pre_data+tmp[i+1])%2
       else:
-        tmp[i]=tmp[i-1]
-    
+        tmp[i]=tmp[i+1]
+
+    #from IPython.core.debugger import Pdb; Pdb().set_trace()
     memory=tmp[:len(memory)]
 
     return memory
 
-  def CRC_check(self,CRC_info):
-    memory=CRC_info[self.K:]
-    for i in range(len(CRC_info)-1,-1,-1):
-      memory=self.right_cyclic(CRC_info[i],self.CRC_polynomial,memory)
-    
-    if np.all(memory==0):
-      return True
-    
-    else:
-      return False
 
+# In[68]:
+
+
+class coding(coding):
+  def CRC_gen(self,information,parity,polynomial):
+    CRC_info=np.zeros(len(information)+len(parity),dtype='int')
+    CRC_info[:len(information)]=information
+    CRC_info[len(information):]=parity
+
+    memory=np.zeros(len(polynomial)-1,dtype='int')
+    CRC_info[:len(information)]=information
+    for i in range(len(CRC_info)):
+      memory=self.cyclic(CRC_info[i],polynomial,memory)
+    #print(len(memory))
+    CRC_info[len(information):]=memory
+    
+    return CRC_info,np.all(memory==0)
+
+
+# In[69]:
+
+
+class coding(coding):
   def reverse_bits(self):
     res=np.zeros(self.N,dtype=int)
 
@@ -121,6 +131,12 @@ class coding():
     tmp=tmp.zfill(self.itr_num+1)[:0:-1]
     res=int(tmp,2) 
     return res
+
+
+# In[70]:
+
+
+class coding(coding):
    
   def xi(self,gamma):
 
@@ -161,6 +177,11 @@ class coding():
 
     return gamma
 
+
+# In[71]:
+
+
+class coding(coding):
   def bisection_method(self,zeta):
 
     #set constant
@@ -207,6 +228,11 @@ class coding():
 
     return gamma
 
+
+# In[72]:
+
+
+class coding(coding):
     
   def Improved_GA(self,K,bit_reverse=True):
     gamma=np.zeros(self.N)
@@ -246,7 +272,7 @@ class coding():
     return res
 
 
-# In[39]:
+# In[73]:
 
 
 class encoding(coding):
@@ -261,16 +287,16 @@ class encoding(coding):
       return information
     
     elif self.decoder_var==1:
-      CRC_info=np.zeros(self.K+self.CRC_len-1)
-      memory=np.zeros(self.CRC_len-1,dtype=int)
-      for i in range(self.K):
-        CRC_info[i],memory=self.left_cyclic(information[i],self.CRC_polynomial,memory)
+      parity=np.zeros(len(self.CRC_polynomial)-1)
+      CRC_info,_=self.CRC_gen(information,parity,self.CRC_polynomial)
+
+      ##check CRC_info
+      parity=CRC_info[len(information):]
+      information=CRC_info[:len(information)]
+      _,check=self.CRC_gen(information,parity,self.CRC_polynomial)
+      if check!=True:
+        print("CRC_info error")
       
-      CRC_info[self.K:]=memory
-
-      if self.CRC_check(CRC_info)==False:
-        print("CRC_err")
-
       return CRC_info
       
 
@@ -304,7 +330,7 @@ class encoding(coding):
     return information,codeword
 
 
-# In[40]:
+# In[74]:
 
 
 class decoding(coding):
@@ -330,6 +356,10 @@ class decoding(coding):
     return res
 
 
+# In[75]:
+
+
+class decoding(decoding):
   def SC_decoding(self,Lc):
     #initialize constant    
     llr=np.zeros((self.itr_num+1,self.N))
@@ -381,7 +411,7 @@ class decoding(coding):
         before_process=2
       
       else:
-        print("encode error!")
+        print("error!")
 
       #leaf node operation
       if depth==self.itr_num:
@@ -403,6 +433,12 @@ class decoding(coding):
           break
     
     return EST_codeword[self.itr_num]
+
+
+# In[76]:
+
+
+class decoding(decoding):
   
   @staticmethod
   def calc_BM(u_tilde,llr):
@@ -531,16 +567,18 @@ class decoding(coding):
     #CRC_check
     res_list_num=0
     for i in range(self.list_size):
-      if self.CRC_check(EST_codeword[i,self.itr_num][self.info_bits])==True:
+      EST_CRC_info=EST_codeword[i,self.itr_num][self.info_bits]
+      _,check=self.CRC_gen(EST_CRC_info[:self.K],EST_CRC_info[self.K:],self.CRC_polynomial)
+      #print(check)
+      if check==True:
         res_list_num=i
-        print("ture")
-        
+        break
    #print("CRC_err")
     
     return EST_codeword[res_list_num,self.itr_num]
 
 
-# In[43]:
+# In[77]:
 
 
 class decoding(decoding):
@@ -565,7 +603,7 @@ class decoding(decoding):
     return EST_information
 
 
-# In[44]:
+# In[78]:
 
 
 class polar_code(encoding,decoding):
@@ -583,12 +621,12 @@ class polar_code(encoding,decoding):
     return information,EST_information
 
 
-# In[45]:
+# In[79]:
 
 
 if __name__=="__main__":
 
-    N=1024
+    N=4096
     pc=polar_code(N)
     #a,b=pc.main_func(1)
     #print(len(a))
