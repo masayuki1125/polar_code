@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[65]:
+# In[361]:
 
 
 import numpy as np
@@ -12,7 +12,7 @@ from AWGN import _AWGN
 ch=_AWGN()
 
 
-# In[66]:
+# In[362]:
 
 
 class coding():
@@ -21,9 +21,10 @@ class coding():
     '''
     polar_decode
     Lc: LLR fom channel
-    decoder_var:int [0,1] (default:0)
+    decoder_var:int [0,1,2]
     0:simpified SC decoder
     1:simplified SCL decoder
+    2:simplified CA SCL decoder
     '''
     self.decoder_var=1 #0:SC 1:SCL_CRC
     self.N=N
@@ -32,7 +33,7 @@ class coding():
     self.design_SNR=1
 
     #for SCL decoder
-    self.list_size=8
+    self.list_size=4
 
     #prepere constants
     self.itr_num=np.log2(self.N).astype(int)
@@ -65,12 +66,19 @@ class coding():
       self.frozen_bits,self.info_bits=self.Improved_GA(self.K)
     
     elif self.decoder_var==1:
+      self.filename="polar_SCL_{}_{}".format(self.N,self.K)
+      #construction
+      self.frozen_bits,self.info_bits=self.Improved_GA(self.K)
+      
+    
+    elif self.decoder_var==2:
       self.filename="polar_SCL_CRC_{}_{}".format(self.N,self.K)
       #construction
       self.frozen_bits,self.info_bits=self.Improved_GA(self.K+self.CRC_len-1)
+      
 
 
-# In[67]:
+# In[363]:
 
 
 class coding(coding):
@@ -93,7 +101,7 @@ class coding(coding):
     return memory
 
 
-# In[68]:
+# In[364]:
 
 
 class coding(coding):
@@ -112,7 +120,7 @@ class coding(coding):
     return CRC_info,np.all(memory==0)
 
 
-# In[69]:
+# In[365]:
 
 
 class coding(coding):
@@ -133,7 +141,7 @@ class coding(coding):
     return res
 
 
-# In[70]:
+# In[366]:
 
 
 class coding(coding):
@@ -178,7 +186,7 @@ class coding(coding):
     return gamma
 
 
-# In[71]:
+# In[367]:
 
 
 class coding(coding):
@@ -229,7 +237,7 @@ class coding(coding):
     return gamma
 
 
-# In[72]:
+# In[368]:
 
 
 class coding(coding):
@@ -272,7 +280,7 @@ class coding(coding):
     return res
 
 
-# In[73]:
+# In[369]:
 
 
 class encoding(coding):
@@ -282,11 +290,12 @@ class encoding(coding):
   def generate_information(self):
     #generate information
     information=np.random.randint(0,2,self.K)
+    #information=np.zeros(self.K)
 
-    if self.decoder_var==0:
+    if self.decoder_var==0 or self.decoder_var==1:
       return information
     
-    elif self.decoder_var==1:
+    elif self.decoder_var==2:
       parity=np.zeros(len(self.CRC_polynomial)-1)
       CRC_info,_=self.CRC_gen(information,parity,self.CRC_polynomial)
 
@@ -330,7 +339,7 @@ class encoding(coding):
     return information,codeword
 
 
-# In[74]:
+# In[370]:
 
 
 class decoding(coding):
@@ -356,7 +365,7 @@ class decoding(coding):
     return res
 
 
-# In[75]:
+# In[371]:
 
 
 class decoding(decoding):
@@ -435,7 +444,7 @@ class decoding(decoding):
     return EST_codeword[self.itr_num]
 
 
-# In[76]:
+# In[372]:
 
 
 class decoding(decoding):
@@ -535,15 +544,33 @@ class decoding(decoding):
 
             #decide sub u_hat. PM
             BM[i,int((-1*u_tilde+1)//2)]=self.calc_BM(-1*u_tilde,llr[i,depth,length])
-            
+
+          #branch*2 path number
           #update PM
+          
+          #print("before PML")
+          #print(PML)
+          #print(np.tile(PML[0:branch,None],(1,2)))
+          #print("before BM")
+          #print(BM)
+
+          #update BM to PML 2d array
           BM[0:branch]+=np.tile(PML[0:branch,None],(1,2))
-          PML[0:branch]=np.sort(np.ravel(BM))[0:branch]
 
           #update branch
           branch=branch*2
           if branch>self.list_size:
             branch = self.list_size 
+
+          #trim PML 2d array and update PML
+          PML[0:branch]=np.sort(np.ravel(BM))[0:branch]
+
+
+          #print("updated BM")
+          #print(BM)
+          #print("updated PML")
+          #print(PML)
+          #from IPython.core.debugger import Pdb; Pdb().set_trace()
           
           #copy before data
           #選ばれたパスの中で、何番目のリストが何番目のリストからの派生なのかを計算する
@@ -553,8 +580,6 @@ class decoding(decoding):
           llr[0:branch]=llr[list_num,:,:]#listを並び替えru
           EST_codeword[0:branch]=EST_codeword[list_num,:,:]
           EST_codeword[0:branch,depth,length]=u_hat
-
-          #from IPython.core.debugger import Pdb; Pdb().set_trace()
                   
         length+=1 #go to next length
 
@@ -564,21 +589,24 @@ class decoding(decoding):
         if length==self.N:
           break
     
-    #CRC_check
+    
     res_list_num=0
-    for i in range(self.list_size):
-      EST_CRC_info=EST_codeword[i,self.itr_num][self.info_bits]
-      _,check=self.CRC_gen(EST_CRC_info[:self.K],EST_CRC_info[self.K:],self.CRC_polynomial)
-      #print(check)
-      if check==True:
-        res_list_num=i
-        break
-   #print("CRC_err")
+    
+    #CRC_check
+    if self.decoder_var==2:
+      for i in range(self.list_size):
+        EST_CRC_info=EST_codeword[i,self.itr_num][self.info_bits]
+        _,check=self.CRC_gen(EST_CRC_info[:self.K],EST_CRC_info[self.K:],self.CRC_polynomial)
+        #print(check)
+        if check==True:
+          res_list_num=i
+          break
+    #print("CRC_err")
     
     return EST_codeword[res_list_num,self.itr_num]
 
 
-# In[77]:
+# In[373]:
 
 
 class decoding(decoding):
@@ -595,15 +623,14 @@ class decoding(decoding):
     if self.decoder_var==0:
       EST_codeword=self.SC_decoding(Lc)
 
-    elif self.decoder_var==1:
+    elif self.decoder_var==1 or self.decoder_var==2:
       EST_codeword=self.SCL_decoding(Lc)
-      
+
     EST_information=EST_codeword[self.info_bits]
-    
     return EST_information
 
 
-# In[78]:
+# In[374]:
 
 
 class polar_code(encoding,decoding):
@@ -621,12 +648,12 @@ class polar_code(encoding,decoding):
     return information,EST_information
 
 
-# In[79]:
+# In[375]:
 
 
 if __name__=="__main__":
 
-    N=4096
+    N=1024
     pc=polar_code(N)
     #a,b=pc.main_func(1)
     #print(len(a))
