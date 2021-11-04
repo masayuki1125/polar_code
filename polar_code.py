@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[361]:
+# In[76]:
 
 
 import numpy as np
@@ -12,7 +12,7 @@ from AWGN import _AWGN
 ch=_AWGN()
 
 
-# In[362]:
+# In[77]:
 
 
 class coding():
@@ -26,7 +26,7 @@ class coding():
     1:simplified SCL decoder
     2:simplified CA SCL decoder
     '''
-    self.decoder_var=1 #0:SC 1:SCL_CRC
+    self.decoder_var=1 #0:SC 1:SCL 2:SCL_CRC
     self.N=N
     self.R=0.5
     self.K=math.floor(self.R*self.N)
@@ -75,10 +75,13 @@ class coding():
       self.filename="polar_SCL_CRC_{}_{}".format(self.N,self.K)
       #construction
       self.frozen_bits,self.info_bits=self.Improved_GA(self.K+self.CRC_len-1)
+    
+    #print("info_bits")
+    #print(self.info_bits)
       
 
 
-# In[363]:
+# In[78]:
 
 
 class coding(coding):
@@ -101,7 +104,7 @@ class coding(coding):
     return memory
 
 
-# In[364]:
+# In[79]:
 
 
 class coding(coding):
@@ -120,7 +123,7 @@ class coding(coding):
     return CRC_info,np.all(memory==0)
 
 
-# In[365]:
+# In[80]:
 
 
 class coding(coding):
@@ -141,7 +144,7 @@ class coding(coding):
     return res
 
 
-# In[366]:
+# In[81]:
 
 
 class coding(coding):
@@ -186,7 +189,7 @@ class coding(coding):
     return gamma
 
 
-# In[367]:
+# In[82]:
 
 
 class coding(coding):
@@ -237,7 +240,7 @@ class coding(coding):
     return gamma
 
 
-# In[368]:
+# In[83]:
 
 
 class coding(coding):
@@ -280,7 +283,7 @@ class coding(coding):
     return res
 
 
-# In[369]:
+# In[84]:
 
 
 class encoding(coding):
@@ -339,7 +342,7 @@ class encoding(coding):
     return information,codeword
 
 
-# In[370]:
+# In[85]:
 
 
 class decoding(coding):
@@ -365,7 +368,7 @@ class decoding(coding):
     return res
 
 
-# In[371]:
+# In[86]:
 
 
 class decoding(decoding):
@@ -444,7 +447,7 @@ class decoding(decoding):
     return EST_codeword[self.itr_num]
 
 
-# In[372]:
+# In[87]:
 
 
 class decoding(decoding):
@@ -473,6 +476,7 @@ class decoding(decoding):
     before_process=0# 0:left 1:right 2:up 3:leaf
     branch=1#the number of branchs. 1 firstly, and increase up to list size 
     BM=np.full((self.list_size,2),10.0**10)#branch metrics
+    # low BM is better
 
     while True:
       
@@ -517,9 +521,6 @@ class decoding(decoding):
 
         depth-=1
         before_process=2
-      
-      else:
-        print("error!")
 
       #leaf node operation
       if depth==self.itr_num:
@@ -530,6 +531,11 @@ class decoding(decoding):
           #decide each list index
           for i in range(branch):
             EST_codeword[i,depth,length]=0
+          
+          #update path metric
+          u_tilde=-1#because frozen_bit is 0
+          for i in range(branch):
+            PML[i]=PML[i]+self.calc_BM(u_tilde,llr[i,depth,length])
         
         #info_bit operation
         else :
@@ -538,21 +544,19 @@ class decoding(decoding):
           for i in range(branch):
 
             u_tilde=-1*np.sign(llr[i,depth,length])#[-1,1]
+            #llr<0 -> u_tilde=1 u_hat=1 // u_hat(sub)=0
+            #llr>0 -> u_tilde=-1 u_hat=0 // u_hat(sub)=1
+            
+            #decide main u_hat 
+            tmp0=self.calc_BM(u_tilde,llr[i,depth,length])
+            tmp1=self.calc_BM(-1*u_tilde,llr[i,depth,length])
+            BM[i,int((u_tilde+1)//2)]=tmp0
 
-            #decide main u_hat. PM
-            BM[i,int((u_tilde+1)//2)]=self.calc_BM(u_tilde,llr[i,depth,length])
-
-            #decide sub u_hat. PM
-            BM[i,int((-1*u_tilde+1)//2)]=self.calc_BM(-1*u_tilde,llr[i,depth,length])
+            #decide sub u_hat
+            BM[i,int((-1*u_tilde+1)//2)]=tmp1
 
           #branch*2 path number
           #update PM
-          
-          #print("before PML")
-          #print(PML)
-          #print(np.tile(PML[0:branch,None],(1,2)))
-          #print("before BM")
-          #print(BM)
 
           #update BM to PML 2d array
           BM[0:branch]+=np.tile(PML[0:branch,None],(1,2))
@@ -564,19 +568,12 @@ class decoding(decoding):
 
           #trim PML 2d array and update PML
           PML[0:branch]=np.sort(np.ravel(BM))[0:branch]
-
-
-          #print("updated BM")
-          #print(BM)
-          #print("updated PML")
-          #print(PML)
-          #from IPython.core.debugger import Pdb; Pdb().set_trace()
+          list_num=np.argsort((np.ravel(BM)))[0:branch]//2#i番目のPMを持つノードが何番目のリストから来たのか特定する
+          u_hat=np.argsort((np.ravel(BM)))[0:branch]%2##i番目のPMを持つノードがu_hatが0か1か特定する
           
           #copy before data
           #選ばれたパスの中で、何番目のリストが何番目のリストからの派生なのかを計算する
           #その後、llr，EST_codewordの値をコピーし、今計算しているリーフノードの値も代入する
-          list_num=np.argsort((np.ravel(BM)))[0:branch]//2#i番目のPMを持つノードが何番目のリストから来たのか特定する
-          u_hat=np.argsort((np.ravel(BM)))[0:branch]%2##i番目のPMを持つノードがu_tildeが0か1か特定する
           llr[0:branch]=llr[list_num,:,:]#listを並び替えru
           EST_codeword[0:branch]=EST_codeword[list_num,:,:]
           EST_codeword[0:branch,depth,length]=u_hat
@@ -589,7 +586,6 @@ class decoding(decoding):
         if length==self.N:
           break
     
-    
     res_list_num=0
     
     #CRC_check
@@ -601,12 +597,17 @@ class decoding(decoding):
         if check==True:
           res_list_num=i
           break
+      
+      else:
+        print("no codeword")
     #print("CRC_err")
+
+    #print("\r",PML,end="")
     
     return EST_codeword[res_list_num,self.itr_num]
 
 
-# In[373]:
+# In[88]:
 
 
 class decoding(decoding):
@@ -630,7 +631,7 @@ class decoding(decoding):
     return EST_information
 
 
-# In[374]:
+# In[89]:
 
 
 class polar_code(encoding,decoding):
@@ -648,7 +649,7 @@ class polar_code(encoding,decoding):
     return information,EST_information
 
 
-# In[375]:
+# In[90]:
 
 
 if __name__=="__main__":
@@ -663,7 +664,7 @@ if __name__=="__main__":
       count_all=0
       count_berr=0
       count_ball=0
-      MAX_ERR=8
+      MAX_ERR=20
 
       while count_err<MAX_ERR:
         
@@ -672,6 +673,8 @@ if __name__=="__main__":
       
         if np.any(information!=EST_information):#BLOCK error check
           count_err+=1
+          #from IPython.core.debugger import Pdb; Pdb().set_trace()
+          
         
         count_all+=1
 
@@ -682,8 +685,9 @@ if __name__=="__main__":
         print("\r","count_all=",count_all,",count_err=",count_err,"count_ball="              ,count_ball,"count_berr=",count_berr,end="")
 
       print("BER=",count_berr/count_ball)
+      
       return  count_err,count_all,count_berr,count_all
     
-    output(0)
+    output(-1)
     
 
