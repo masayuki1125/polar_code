@@ -33,7 +33,7 @@ class coding():
     self.design_SNR=1
 
     #for SCL decoder
-    self.list_size=4
+    self.list_size=32
 
     #prepere constants
     self.itr_num=np.log2(self.N).astype(int)
@@ -66,13 +66,13 @@ class coding():
       self.frozen_bits,self.info_bits=self.Improved_GA(self.K)
     
     elif self.decoder_var==1:
-      self.filename="polar_SCL_{}_{}".format(self.N,self.K)
+      self.filename="polar_SCL_{}_{}_{}".format(self.N,self.K,self.list_size)
       #construction
       self.frozen_bits,self.info_bits=self.Improved_GA(self.K)
       
     
     elif self.decoder_var==2:
-      self.filename="polar_SCL_CRC_{}_{}".format(self.N,self.K)
+      self.filename="polar_SCL_CRC_{}_{}_{}".format(self.N,self.K,self.list_size)
       #construction
       self.frozen_bits,self.info_bits=self.Improved_GA(self.K+self.CRC_len-1)
     
@@ -598,8 +598,8 @@ class decoding(decoding):
           res_list_num=i
           break
       
-      else:
-        print("no codeword")
+      #else:
+        #print("no codeword")
     #print("CRC_err")
 
     #print("\r",PML,end="")
