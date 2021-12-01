@@ -23,7 +23,7 @@ ray.init()
 def output(dumped,EbNodB):
         '''
         #あるSNRで計算結果を出力する関数を作成
-        #cd.main_func must input 'EbNodB' and output 1D 'codeword' and 'EST_codeword'
+        #cd.main_func must input 'EbNodB' and output 1D or 2D 'codeword' and 'EST_codeword'
         '''
 
         #de-seriallize file
@@ -32,26 +32,40 @@ def output(dumped,EbNodB):
         np.random.seed()
 
         #prepare some constants
+        MAX_ERR=1
+        MAX_ALL=10**5
         MAX_BITALL=10**6
-        MAX_BITERR=10**3
-        count_bitall=0
-        count_biterr=0
-        count_all=0
-        count_err=0
+        count_bitall=np.zeros((1))
+        count_biterr=np.zeros((1))
+        count_all=np.zeros((1))
+        count_err=np.zeros((1))
         
 
-        while count_all<MAX_BITALL and count_err<MAX_BITERR:
-            #print("\r"+str(count_err),end="")
-            information,EST_information=cd.main_func(EbNodB)
+        while count_bitall[len(count_err)-1]<MAX_BITALL: #count_all<MAX_ALL エラーの個数を指定するか試行回数を指定するかを選ぶ #max itr番目のデータのエラーカウントをチェック
+       
+            information,EST_information=cd.main_func(EbNodB) #matrixでのESTinformationにも対応
             
-            #calculate block error rate
-            if np.any(information!=EST_information):
-                count_err+=1
-            count_all+=1
+            if EST_information.ndim==1: #change EST_information to 2D 
+                EST_information=EST_information[:,np.newaxis]
+                
+            data_len=EST_information.shape[1]
+            
+            #count変数のベクトルを変更(最初のイテレーション時に実行)
+            if len(count_all)!=data_len:
+                count_bitall=np.zeros((data_len))
+                count_biterr=np.zeros((data_len))
+                count_all=np.zeros((data_len))
+                count_err=np.zeros((data_len))
+            
+            for i in range(data_len): #EST_information1列ごとに足し算
+                #calculate block error rate
+                if np.any(information!=EST_information[:,i]):
+                    count_err[i]+=1
+                count_all[i]+=1
 
-            #calculate bit error rate 
-            count_biterr+=np.sum(information!=EST_information)
-            count_bitall+=len(information)
+                #calculate bit error rate 
+                count_biterr[i]+=np.sum(information!=EST_information[:,i])
+                count_bitall[i]+=len(information)
 
         return count_err,count_all,count_biterr,count_bitall
 
@@ -63,7 +77,7 @@ class MC():
     def __init__(self):
         self.TX_antenna=1
         self.RX_antenna=1
-        self.MAX_ERR=12
+        self.parallel=100
         self.EbNodB_start=-5
         self.EbNodB_end=1
         self.EbNodB_range=np.arange(self.EbNodB_start,self.EbNodB_end,0.5) #0.5dBごとに測定
@@ -76,7 +90,7 @@ class MC():
         dumped:seriallized file 
         main_func: must input 'EbNodB' and output 1D 'codeword' and 'EST_codeword'
         -----------
-        output:result_ids(2Darray x:SNR_number y:MAX_ERR)
+        output:result_ids(2Darray x:SNR_number y:parallel)
 
         '''
 
@@ -86,7 +100,7 @@ class MC():
 
         for i,EbNodB in enumerate(self.EbNodB_range):
             
-            for j in range(self.MAX_ERR):
+            for j in range(self.parallel):
                 #multiprocess    
                 result_ids[i].append(output.remote(dumped,EbNodB))  # 並列演算
                 #resultは長さ1のリストの中にBLER,BERの2つのarrayのtupleが入った配列
@@ -96,7 +110,7 @@ class MC():
     def monte_carlo_calc(self,result_ids_array,N_list):
 
         #prepare constant
-        tmp_num=self.MAX_ERR
+        tmp_num=self.parallel
         tmp_ids=[]
 
         #Nのリストに対して実行する
@@ -121,12 +135,19 @@ class MC():
                 count_biterr=0
                 count_bitall=0
                 
-                for k in range(self.MAX_ERR):
+                for k in range(self.parallel):
                     tmp1,tmp2,tmp3,tmp4=result[k]
                     count_err+=tmp1
                     count_all+=tmp2
                     count_biterr+=tmp3
                     count_bitall+=tmp4
+                    
+                #count_allの要素数が１でなかったときに最初の反復のときのみ実行
+                if len(count_all)!=1 and j==0:
+                    data_len=len(count_all)
+                    #BER,BLERを二次元に拡張
+                    BLER=np.zeros((len(self.EbNodB_range),data_len))
+                    BER=np.zeros((len(self.EbNodB_range),data_len))
 
                 BLER[j]=count_err/count_all
                 BER[j]=count_biterr/count_bitall
@@ -138,6 +159,7 @@ class MC():
                 print("\r"+"EbNodB="+str(EbNodB)+",BLER="+str(BLER[j])+",BER="+str(BER[j]),end="")
             
             #特定のNについて終わったら出力
+            print(BLER)
             st=savetxt(N)
             st.savetxt(BLER,BER)
 
@@ -147,29 +169,49 @@ class MC():
 
 
 #毎回書き換える関数
-class savetxt(polar_code,_AWGN,MC):
+class savetxt():
 
   def __init__(self,N):
-    super().__init__(N)   
+    self.tc=polar_code(N)
+    self.mc=MC()
+    self.ch=_AWGN()
 
   def savetxt(self,BLER,BER):
+      
+    #BLERが二次元のときに対応
+    
+    if BLER.ndim==1: #change EST_information to 2D 
+        BLER=BLER[:,np.newaxis]
+        BER=BER[:,np.newaxis]
+        
+        
+    data_len=BLER.shape[1]
+      
+      
+    for j in range(data_len):
+      new_filename=self.tc.filename
+      if BLER.shape[1]!=1:
+        new_filename=self.tc.filename+"_"+str(j+1) #ファイル名にイテレーション回数を記入
 
-    with open(self.filename,'w') as f:
+      with open(new_filename,'w') as f:
 
-        #print("#N="+str(self.N),file=f)
-        print("#TX_antenna="+str(self.TX_antenna),file=f)
-        print("#RX_antenna="+str(self.RX_antenna),file=f)
-        print("#modulation_symbol="+str(self.M),file=f)
+        print("#N="+str(self.tc.K),file=f)
+        print("#TX_antenna="+str(self.ch.TX_antenna),file=f)
+        print("#RX_antenna="+str(self.ch.RX_antenna),file=f)
+        print("#modulation_symbol="+str(self.ch.M),file=f)
+        #print("#max_itr="+str(self.tc.max_itr),file=f)
+        print("#parallel="+str(self.mc.parallel),file=f)
         print("#EsNodB,BLER,BER",file=f) 
-        for i in range(len(self.EbNodB_range)):
-            print(str(self.EbNodB_range[i]),str(BLER[i]),str(BER[i]),file=f)
+        
+        for i in range(len(self.mc.EbNodB_range)):
+            print(str(self.mc.EbNodB_range[i]),str(BLER[i,j]),str(BER[i,j]),file=f)
 
 
 # In[ ]:
 if __name__=="__main__":
     mc=MC()
 
-    N_list=[1024]
+    N_list=[512,1024,2048,4096]
     result_ids_array=[]
     print(mc.EbNodB_range)
     for i,N in enumerate(N_list):
@@ -179,49 +221,3 @@ if __name__=="__main__":
         result_ids_array.append(mc.monte_carlo_get_ids(dumped))
 
     mc.monte_carlo_calc(result_ids_array,N_list)
-'''
-#@ray.remote
-def output1(EbNodB):
-
-    #cd=pickle.loads(dumped)
-
-    count_err=0
-    count_all=0
-    count_berr=0
-    count_ball=0
-    MAX_ERR=8
-
-    while count_err<MAX_ERR:
-    
-        information,EST_information=cd.main_func(EbNodB)
-        
-        if np.any(information!=EST_information):#BLOCK error check
-            count_err+=1
-        
-        count_all+=1
-
-        #calculate bit error rate 
-        count_berr+=np.sum(information!=EST_information)
-        count_ball+=len(information)
-
-        print("\r","count_all=",count_all,",count_err=",count_err,"count_ball=",count_ball,"count_berr=",count_berr,end="")
-
-    print("BER=",count_berr/count_ball)
-
-    return  count_err,count_all,count_berr,count_all
-
-N=512
-cd=polar_code(N)
-#dumped=pickle.dumps(cd)
-print(output1(10))
-#result=output1.remote(dumped,10)
-#print(ray.get(result))
-
-
-
-#result=output.remote(dumped,10)
-#ray.get(result)
-
-#result=output.remote(dumped,10)
-#ray.get(result)
-'''
