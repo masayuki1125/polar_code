@@ -578,6 +578,7 @@ class decoding(coding):
       EST_codeword=self.SCL_decoding(Lc)
 
     EST_information=EST_codeword[self.info_bits]
+    
     return EST_information
 
 
