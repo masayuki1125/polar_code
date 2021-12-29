@@ -32,6 +32,11 @@ class Improved_GA():
     self.Z_1=self.xi(self.G_1)
     self.Z_2=self.xi(self.G_2)
 
+
+# In[4]:
+
+
+class Improved_GA(Improved_GA):
   def reverse(self,index,n):
     '''
     make n into bit reversal order
@@ -41,6 +46,11 @@ class Improved_GA():
     res=int(tmp,2) 
     return res
 
+
+# In[5]:
+
+
+class Improved_GA(Improved_GA):
   def xi(self,gamma):
   
     if gamma<=self.G_0:
@@ -76,10 +86,17 @@ class Improved_GA():
       #gamma=-4*zeta
 
     if gamma<0:
+      print(gamma)
+      print(zeta)
       print("gamma is - err")
 
     return gamma
 
+
+# In[6]:
+
+
+class Improved_GA(Improved_GA):
   def bisection_method(self,zeta):
   
     #set constant
@@ -119,6 +136,9 @@ class Improved_GA():
     gamma=(b+a)/2
 
     if gamma<0:
+      print(a)
+      print(b)
+      print(gamma)
       print("gamma is - err")    
       
     if gamma==0.0:
@@ -128,6 +148,11 @@ class Improved_GA():
 
     return gamma
 
+
+# In[7]:
+
+
+class Improved_GA(Improved_GA):
   def main_const(self,N,K,design_SNR,bit_reverse=True):
     #make n where 2**n=N
     n=np.log2(N).astype(int)
@@ -170,6 +195,81 @@ class Improved_GA():
 
 
 # In[8]:
+
+
+class Improved_GA(Improved_GA):
+  def maxstr(self,a,b):
+    def f(c):
+      return np.log(1+np.exp(-1*c))
+    return max(a,b)+f(abs(a-b))
+
+
+# In[9]:
+
+
+class Improved_GA(Improved_GA):
+  def left_operation(self,gamma1,gamma2):
+    
+    #calc zeta
+    zeta1=self.xi(gamma1)
+    zeta2=self.xi(gamma2)
+    
+    if gamma1<=self.G_0 and gamma2<=self.G_0:
+        
+      sq=1/2*gamma1*gamma2
+      cu=-1/4*gamma1*(gamma2**2)-1/4*(gamma1**2)*gamma2
+      fo=5/24*gamma1*(gamma2**2)+1/4*(gamma1**2)*(gamma2**2)+5/24*(gamma1**2)*gamma2
+      
+      gamma=sq+cu+fo
+      
+            
+    else:
+      
+      gamma=self.xi_inv(zeta1+math.log(2-math.e**zeta1)) 
+      #tmp=self.maxstr(zeta1,zeta2)
+      #zeta=self.maxstr(tmp,zeta1-zeta2)
+
+      #gamma=self.xi_inv(zeta)
+      
+      #gamma=inv_phi(1-(1-phi(gamma1))*(1-phi(gamma2)))
+      #print("1")
+    return gamma
+          
+  def right_operation(self,gamma1,gamma2):
+    #print("0")
+    return gamma1+gamma2
+  
+  
+  def main_const_for_different_SNR(self,N,K,low_des,high_des=1000,ind_low_des=False,ind_high_des=False):
+    
+    n=np.log2(N).astype(int)
+    gamma=np.zeros((n+1,N)) #matrix
+    
+    #初期値の代入
+    if high_des==1000:
+      gamma[0,:]=4*(10 ** (low_des / 10))
+      
+    else:
+      gamma[0,ind_low_des]=4*(10 ** (low_des / 10))
+      gamma[0,ind_high_des]=4*(10 ** (high_des / 10))
+    
+    for i in range(1,gamma.shape[0]):
+      for j in range(gamma.shape[1]):
+        if (j//2**(n-i))%2==0:
+          gamma[i,j]=self.left_operation(gamma[i-1,j],gamma[i-1,j+2**(n-i)])
+        
+        else :
+          gamma[i,j]=self.right_operation(gamma[i-1,j],gamma[i-1,j-2**(n-i)])
+    
+    tmp=np.argsort(gamma[n,:])
+    
+    frozen_bits=np.sort(tmp[:N-K])
+    info_bits=np.sort(tmp[N-K:])
+    
+    return frozen_bits, info_bits
+
+
+# In[10]:
 
 
 class GA():
@@ -240,7 +340,6 @@ class GA():
     gamma=np.zeros((n+1,N)) #matrix
     
     if high_des==1000:
-      print("itiyoubunnpu")
       gamma[0,:]=4*(10 ** (low_des / 10))
       
     else:
@@ -273,6 +372,12 @@ class GA():
     '''
 
     return frozen_bits,info_bits
+
+
+# In[11]:
+
+
+class GA(GA):
   
   def bisection_method(self,zeta):
       
@@ -326,7 +431,7 @@ class GA():
     return gamma
 
 
-# In[10]:
+# In[12]:
 
 
 class inv_GA():
@@ -431,6 +536,12 @@ class inv_GA():
     
     return low_power_bits,high_power_bits
     
+
+
+# In[13]:
+
+
+class inv_GA(inv_GA):
   def bisection_method(self,zeta):
       
     #set constant
@@ -480,7 +591,12 @@ class inv_GA():
       print(zeta) 
 
     return gamma
-  
+
+
+# In[14]:
+
+
+class inv_GA(inv_GA):
   def bisection_method_for_inv_GA(self,zeta,A):
     #増大関数について考える
       
@@ -541,28 +657,72 @@ class inv_GA():
     return gamma
 
 
-# In[14]:
+# In[15]:
+
+
+class monte_carlo():
+    
+  def main_const(self,N,K_res,design_SNR,bit_reverse=False):
+    from polar_code import polar_code
+    self.pc=polar_code(N,0)
+    
+    #prepere constant
+    c=np.zeros(N)
+    M=10**3
+    for _ in range(M):
+      _,codeword=self.pc.polar_encode()
+      Lc=-1*self.pc.ch.generate_LLR(codeword,design_SNR)#デコーダが＋、ー逆になってしまうので-１をかける
+      llr=self.pc.polar_decode(Lc) 
+      
+      d=llr
+      d[llr<1]=1
+      d[llr>=1]=0
+      c=c+d
+    
+    tmp=np.argsort(c)
+    frozen_bits=np.sort(tmp[:N-K_res])
+    info_bits=np.sort(tmp[N-K_res:])
+    
+    return frozen_bits,info_bits
+
+
+# In[16]:
 
 
 #check
 if __name__=="__main__":
-  N=2048
+  N=1024
   const1=Improved_GA()
-  frozen1,info1=const1.main_const(N,N//2,0)
+  frozen1,info1=const1.main_const(N,N//2,10)
+  #print(np.sum(frozen1!=a))
+  
   
   const2=GA()
-  frozen2,info2=const2.main_const(N,N//2,0)
+  frozen2,info2=const2.main_const(N,N//2,10)
   
   print(np.any(frozen1!=frozen2))
   
   const3=inv_GA()
   low,high=const3.main_const(N,frozen2,info2)
   
-  #a=np.any(frozen1!=frozen2)
-  #print(a)
+  a=np.any(frozen1!=frozen2)
+  print(a)
 
 
-# In[ ]:
+# In[17]:
+
+
+if __name__=="__main__":
+  N=1024
+  K=N//2
+  const1=Improved_GA()
+  f,i=const1.main_const_for_different_SNR(N,K,0,-10,np.arange(0,K),np.arange(K,N))
+
+  const2=GA()
+  f2,i2=const2.main_const(N,K,0,-10,np.arange(0,K),np.arange(K,N))
+
+
+# In[18]:
 
 
 if __name__=="__main__":

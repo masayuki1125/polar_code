@@ -7,7 +7,7 @@
 import numpy as np
 import ray
 import pickle
-from NOMA import NOMA
+from PAM import PAM
 from AWGN import _AWGN
 
 
@@ -32,7 +32,7 @@ def output(dumped,EbNodB):
         np.random.seed()
 
         #prepare some constants
-        MAX_BITALL=10**5
+        MAX_BITALL=10**4
         MAX_BITERR=10**2
         count_bitall=0
         count_biterr=0
@@ -64,8 +64,8 @@ class MC():
         self.TX_antenna=1
         self.RX_antenna=1
         self.MAX_ERR=10
-        self.EbNodB_start=-5
-        self.EbNodB_end=0
+        self.EbNodB_start=0
+        self.EbNodB_end=5
         self.EbNodB_range=np.arange(self.EbNodB_start,self.EbNodB_end,0.5) #0.5dBごとに測定
 
     #特定のNに関する出力
@@ -151,7 +151,7 @@ class savetxt():
   
   def __init__(self,N):
     self.ch=_AWGN()
-    self.cd=NOMA(N)
+    self.cd=PAM(N)
     self.mc=MC()
 
   def savetxt(self,BLER,BER):
@@ -179,7 +179,7 @@ if __name__=="__main__":
     result_ids_array=[]
     print(mc.EbNodB_range)
     for i,N in enumerate(N_list):
-        cd=NOMA(N)
+        cd=PAM(N)
         dumped=pickle.dumps(cd)
         print("N=",N)
         result_ids_array.append(mc.monte_carlo_get_ids(dumped))

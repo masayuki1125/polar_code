@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[22]:
+# In[88]:
 
 
 import numpy as np
@@ -9,7 +9,7 @@ from polar_code import polar_code
 from AWGN import _AWGN
 
 
-# In[23]:
+# In[89]:
 
 
 #最適なβの値の設計方法
@@ -19,11 +19,13 @@ from AWGN import _AWGN
 #④β=β1/β2とし、Weak Userの受信SNRを変化させて、全体のsystemのBERを測定する
 
 
-# In[59]:
+# In[90]:
 
 
 class NOMA():
   def __init__(self,N):
+    self.N=N
+    self.K=self.N//2
     #EbNodB1>EbNodB2
     #User1=Strong User(Fixed)
     #User2=Weak User
@@ -41,7 +43,7 @@ class NOMA():
     self.cd1=polar_code(N//2)
     self.cd2=polar_code(N//2)
     
-    self.filename="NOMA_polar_{}_{}".format(N,N//2)
+    self.filename="NOMA_polar_{}_{}".format(self.N,self.K)
     
   def NOMA_encode(self):
     info1,cwd1=self.cd1.polar_encode()
@@ -49,7 +51,7 @@ class NOMA():
     return info1,info2,cwd1,cwd2
 
 
-# In[60]:
+# In[91]:
 
 
 '''
@@ -63,7 +65,7 @@ class NOMA(NOMA):
 '''
 
 
-# In[61]:
+# In[92]:
 
 
 class NOMA(NOMA):
@@ -98,6 +100,7 @@ class NOMA(NOMA):
     return EST_info1
   
   def decode2(self,res_const,No2):
+    
     RX_const=self.ch.add_AWGN(res_const,No2+self.beta)
     Lc=-1*self.ch.demodulate(RX_const,No2+self.beta)
     EST_info2=self.cd2.polar_decode(Lc)
@@ -115,6 +118,15 @@ class NOMA(NOMA):
     EbNo2 = 10 ** (EbNodB2 / 10)
     No2=1/EbNo2
     
+    #change construction
+    if self.EbNodB1!=self.cd1.design_SNR:
+      self.cd1.design_SNR=self.EbNodB1
+      self.cd1.frozen_bits,self.cd1.info_bits=self.cd1.choose_frozen_bits(self.cd1.design_SNR,self.beta)
+      
+    if EbNodB2!=self.cd2.design_SNR:
+      self.cd2.design_SNR=EbNodB2
+      self.cd2.frozen_bits,self.cd2.info_bits=self.cd2.choose_frozen_bits(self.cd2.design_SNR)
+    
     info1,info2,cwd1,cwd2=self.NOMA_encode()
     res_const=self.channel(cwd1,cwd2,self.beta)
     EST_info1,EST_info2=self.NOMA_decode(res_const,self.No1,No2)
@@ -127,11 +139,11 @@ class NOMA(NOMA):
     
 
 
-# In[68]:
+# In[106]:
 
 
 if __name__=="__main__":
   ma=NOMA(1024)
-  a,b=ma.main_func(-1)
+  a,b=ma.main_func(-2)
   print(np.sum(a!=b))
 

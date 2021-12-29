@@ -1,22 +1,23 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[350]:
+# In[175]:
+
 
 
 import numpy as np
 import math
 from decimal import *
 from AWGN import _AWGN
+from polar_construction import Improved_GA
+from polar_construction import GA
 
-ch=_AWGN()
 
-
-# In[352]:
+# In[176]:
 
 
 class coding():
-  def __init__(self,N):
+  def __init__(self,N,K):
     super().__init__()
     '''
     polar_decode
@@ -26,11 +27,20 @@ class coding():
     1:simplified SCL decoder
     2:simplified CA SCL decoder
     '''
-    self.decoder_var=2 #0:SC 1:SCL 2:SCL_CRC
     self.N=N
-    self.R=0.5
-    self.K=math.floor(self.R*self.N)
-    self.design_SNR=-1
+    #self.K=math.floor(self.R*self.N)
+    self.K=K #K=0 :monte_carlo_construction
+    self.R=K/N
+    self.design_SNR=0
+    
+    #decide channel coding variance
+    self.ch=_AWGN()
+    self.const=Improved_GA() #Improved_GA,GA
+    self.decoder_var=0 #0:SC 1:SCL 2:SCL_CRC
+    if self.K==0: #for monte_carlo_construction
+      self.decoder_var=0
+    
+    self.adaptive_design_SNR=False #default:False
 
     #for SCL decoder
     self.list_size=4
@@ -39,46 +49,43 @@ class coding():
     self.itr_num=np.log2(self.N).astype(int)
     self.bit_reversal_sequence=self.reverse_bits()
 
-    #for construction(GA)
-    self.G_0=0.2
-    self.G_1=0.7
-    self.G_2=10
-    self.a0=-0.002706
-    self.a1=-0.476711
-    self.a2=0.0512
-    self.a=-0.4527
-    self.b=0.0218
-    self.c=0.86
-    self.K_0=8.554
-
-    self.Z_0=self.xi(self.G_0)
-    self.Z_1=self.xi(self.G_1)
-    self.Z_2=self.xi(self.G_2)
-
     #for encoder (CRC poly)
     #1+x+x^2+....
     self.CRC_polynomial =np.array([1,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,1])
     self.CRC_len=len(self.CRC_polynomial)
+    
+    #flozen_bit selection 
+    self.frozen_bits,self.info_bits=self.choose_frozen_bits(self.design_SNR)  
 
+
+# In[177]:
+
+
+class coding(coding):
+  def choose_frozen_bits(self,design_SNR,beta=1):
     if self.decoder_var==0:
       self.filename="polar_SC_{}_{}".format(self.N,self.K)
       #construction
-      self.frozen_bits,self.info_bits=self.Improved_GA(self.K)
+      frozen_bits,info_bits=self.const.main_const(self.N,self.K,design_SNR,beta)
     
     elif self.decoder_var==1:
       self.filename="polar_SCL_{}_{}_{}".format(self.N,self.K,self.list_size)
       #construction
-      self.frozen_bits,self.info_bits=self.Improved_GA(self.K)
-      
-    
+      frozen_bits,info_bits=self.const.main_const(self.N,self.K,design_SNR,beta)
+        
     elif self.decoder_var==2:
       self.filename="polar_SCL_CRC_{}_{}_{}".format(self.N,self.K,self.list_size)
       #construction
-      self.frozen_bits,self.info_bits=self.Improved_GA(self.K+self.CRC_len-1)
-    
-    #print("info_bits")
-    #print(self.info_bits)
+      frozen_bits,info_bits=self.const.main_const(self.N,self.K+self.CRC_len-1,design_SNR,beta)
       
+    return frozen_bits,info_bits
+    
+
+
+# In[178]:
+
+
+class coding(coding):
   #reffered to https://dl.acm.org/doi/pdf/10.5555/1074100.1074303
   @staticmethod
   def cyclic(data,polynomial,memory):
@@ -94,6 +101,11 @@ class coding():
 
     return res
 
+
+# In[179]:
+
+
+class coding(coding):
   def CRC_gen(self,information,polynomial):
     parity=np.zeros(len(polynomial)-1)
     CRC_info=np.zeros(len(information)+len(parity),dtype='int')
@@ -110,6 +122,11 @@ class coding():
     
     return CRC_info,np.all(memory==0)
 
+
+# In[180]:
+
+
+class coding(coding):
   def reverse_bits(self):
     res=np.zeros(self.N,dtype=int)
 
@@ -125,138 +142,14 @@ class coding():
     tmp=tmp.zfill(self.itr_num+1)[:0:-1]
     res=int(tmp,2) 
     return res
-   
-  def xi(self,gamma):
-
-    if gamma<=self.G_0:
-      zeta=-1*gamma/2+(gamma**2)/8-(gamma**3)/8
-    
-    elif self.G_0<gamma<=self.G_1:
-      zeta=self.a0+self.a1*gamma+self.a2*(gamma**2)
-
-    elif self.G_1<gamma<self.G_2:
-      zeta=self.a*(gamma**self.c)+self.b
-
-    elif self.G_2<=gamma:
-      zeta=-1*gamma/4+math.log(math.pi)/2-math.log(gamma)/2+math.log(1-(math.pi**2)/(4*gamma)+self.K_0/(gamma**2))
-    
-    if zeta>0:
-      print("zeta is + err")
-
-    return zeta
-
-  def xi_inv(self,zeta):
-
-    if self.Z_0<=zeta:
-      gamma=-2*zeta+zeta**2+zeta**3
-
-    elif self.Z_1<=zeta<self.Z_0:
-      gamma=(-1*self.a1-(self.a1**2-4*self.a2*(self.a0-zeta))**(1/2))/(2*self.a2)
-
-    elif self.Z_2<zeta<self.Z_1:
-      gamma=((zeta-self.b)/self.a)**(1/self.c)
-
-    elif zeta<=self.Z_2:
-      gamma=self.bisection_method(zeta)
-      #gamma=-4*zeta
-
-    if gamma<0:
-      print("gamma is - err")
-
-    return gamma
-
-  def bisection_method(self,zeta):
-
-    #set constant
-    min_num=self.G_2
-    max_num=-4*(zeta-1/2*math.log(math.pi))
-    error_accept=1/100
-
-    def f(x):
-      zeta=-1*x/4+math.log(math.pi)/2-math.log(x)/2+math.log(1-(math.pi**2)/(4*x)+self.K_0/(x**2))
-      return zeta
-
-    #initial value
-    a=min_num
-    b=max_num
-    error=b-a
-
-    #very small zeta situation
-    if f(max_num)>zeta:
-      print("error")
-      #gamma=max_num
-
-    while error>error_accept:
-      c=(b+a)/2 #center value
-
-      if f(c)>=zeta:
-        a=c
-        error=b-a
-      
-      elif f(c)<zeta:
-        b=c
-        error=b-a
-      
-      if error<0:
-        print("something is wrong")
-      #print("\r",error,end="")
-    
-    gamma=(b+a)/2
-
-    if gamma<0:
-      print("gamma is - err")    
-      
-    if gamma==0.0:
-      print("gamma is underflow")
-      print(gamma)
-      print(zeta) 
-
-    return gamma
-    
-  def Improved_GA(self,K,bit_reverse=True):
-    gamma=np.zeros(self.N)
-     
-    gamma[0]=4*(10 ** (self.design_SNR / 10)) #mean of LLR when transmit all 0
-    for i in range(1,self.itr_num+1):
-      J=2**(i-1)
-      for j in range(0,J):
-        u=gamma[j]
-        if u<=self.G_0:
-          gamma[j]=(u**2)/2-(u**3)/2+2*(u**4)/3
-        else:
-          z=self.xi(u)
-          gamma[j]=self.xi_inv(z+math.log(2-math.e**z))
-        
-        gamma[j+J]=2*u
-
-    tmp=self.indices_of_elements(gamma,self.N)
-    frozen_bits=np.sort(tmp[:self.N-K])
-    info_bits=np.sort(tmp[self.N-K:])
-
-    if bit_reverse==True:
-      for i in range(len(frozen_bits)):
-        frozen_bits[i]=self.reverse(frozen_bits[i])
-      frozen_bits=np.sort(frozen_bits)
-
-      for i in range(len(info_bits)):
-        info_bits[i]=self.reverse(info_bits[i])
-      info_bits=np.sort(info_bits)
-
-    return frozen_bits,info_bits
-
-  @staticmethod
-  def indices_of_elements(v,l):
-    tmp=np.argsort(v)
-    res=tmp[0:l]
-    return res
 
 
-# In[359]:
+# In[181]:
 
 
 class encoding(coding):
-  def __init__(self,N):
-    super().__init__(N)
+  def __init__(self,N,K):
+    super().__init__(N,K)
   
   def generate_information(self):
     #generate information
@@ -308,14 +201,14 @@ class encoding(coding):
     return information,codeword
 
 
-# In[360]:
+# In[182]:
 
 
 class decoding(coding):
 
-  def __init__(self,N):
-    super().__init__(N)
-   
+  def __init__(self,N,K):
+    super().__init__(N,K)
+    
   @staticmethod
   def chk(llr_1,llr_2):
     CHECK_NODE_TANH_THRES=30
@@ -333,6 +226,11 @@ class decoding(coding):
         res[i]= 2 * np.arctanh(np.tanh(llr_1[i] / 2, ) * np.tanh(llr_2[i] / 2))
     return res
 
+
+# In[183]:
+
+
+class decoding(decoding):
   def SC_decoding(self,Lc):
     #initialize constant    
     llr=np.zeros((self.itr_num+1,self.N))
@@ -346,9 +244,6 @@ class decoding(coding):
     before_process=0# 0:left 1:right 2:up 3:leaf
 
     while True:
-      
-      #interior node operation
-      #up node operation
   
       #left node operation
       if before_process!=2 and before_process!=3 and length%2**(self.itr_num-depth)==0:
@@ -405,7 +300,20 @@ class decoding(coding):
         if length==self.N:
           break
     
-    return EST_codeword[self.itr_num]
+    if self.K!=0: 
+      res=EST_codeword[self.itr_num]
+    else:
+      res=llr[self.itr_num]
+      #np.savetxt("llr",res)
+      #from IPython.core.debugger import Pdb; Pdb().set_trace()
+    
+    return res
+
+
+# In[184]:
+
+
+class decoding(decoding):
   
   @staticmethod
   def calc_BM(u_tilde,llr):
@@ -444,7 +352,6 @@ class decoding(coding):
 
         tmp1=llr[:,depth-1,length:length+2**(self.itr_num-depth)]
         tmp2=llr[:,depth-1,length+2**(self.itr_num-depth):length+2**(self.itr_num-depth+1)]
-        
 
         #carculate each list index
         for i in range(branch):
@@ -560,7 +467,12 @@ class decoding(coding):
     #print("\r",PML,end="")
     
     return EST_codeword[res_list_num,self.itr_num]
-  
+
+
+# In[185]:
+
+
+class decoding(decoding):
   def polar_decode(self,Lc):
     '''
     polar_decode
@@ -576,22 +488,31 @@ class decoding(coding):
 
     elif self.decoder_var==1 or self.decoder_var==2:
       EST_codeword=self.SCL_decoding(Lc)
+      
+    if self.K==0:
+      res=EST_codeword
+    else:
+      res=EST_codeword[self.info_bits]
+    return res
 
-    EST_information=EST_codeword[self.info_bits]
-    
-    return EST_information
 
-
-# In[364]:
+# In[186]:
 
 
 class polar_code(encoding,decoding):
-  def __init__(self,N):
-    super().__init__(N)
+  def __init__(self,N,K):
+    super().__init__(N,K)
 
   def main_func(self,EbNodB): 
+    
+    if self.adaptive_design_SNR==True:
+      if self.design_SNR!=EbNodB:
+        self.design_SNR=EbNodB
+        self.frozen_bits,self.info_bits=self.choose_frozen_bits(self.design_SNR)
+        
+    
     information,codeword=self.polar_encode()
-    Lc=-1*ch.generate_LLR(codeword,EbNodB)#デコーダが＋、ー逆になってしまうので-１をかける
+    Lc=-1*self.ch.generate_LLR(codeword,EbNodB)#デコーダが＋、ー逆になってしまうので-１をかける
     EST_information=self.polar_decode(Lc) 
       
     if len(EST_information)!=len(information):
@@ -600,13 +521,14 @@ class polar_code(encoding,decoding):
     return information,EST_information
 
 
-# In[365]:
+# In[187]:
 
 
 if __name__=="__main__":
 
     N=1024
-    pc=polar_code(N)
+    K=0
+    pc=polar_code(N,K)
     #a,b=pc.main_func(1)
     #print(len(a))
     #print(len(b))
@@ -619,7 +541,7 @@ if __name__=="__main__":
 
       while count_err<MAX_ERR:
         
-        pc=polar_code(N)
+        #pc=polar_code(N,K)
         information,EST_information=pc.main_func(EbNodB)
       
         if np.any(information!=EST_information):#BLOCK error check
@@ -639,6 +561,6 @@ if __name__=="__main__":
       
       return  count_err,count_all,count_berr,count_all
     
-    output(-1)
+    output(-100)
     
 
