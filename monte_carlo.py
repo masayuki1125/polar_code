@@ -7,7 +7,7 @@
 import numpy as np
 import ray
 import pickle
-from PAM import PAM
+from polar_code import polar_code
 from AWGN import _AWGN
 
 
@@ -64,8 +64,8 @@ class MC():
         self.TX_antenna=1
         self.RX_antenna=1
         self.MAX_ERR=10
-        self.EbNodB_start=0
-        self.EbNodB_end=5
+        self.EbNodB_start=-5
+        self.EbNodB_end=1
         self.EbNodB_range=np.arange(self.EbNodB_start,self.EbNodB_end,0.5) #0.5dBごとに測定
 
     #特定のNに関する出力
@@ -138,7 +138,7 @@ class MC():
                 print("\r"+"EbNodB="+str(EbNodB)+",BLER="+str(BLER[j])+",BER="+str(BER[j]),end="")
             
             #特定のNについて終わったら出力
-            st=savetxt(N)
+            st=savetxt(N,N//2)
             st.savetxt(BLER,BER)
 
 
@@ -149,18 +149,20 @@ class MC():
 #毎回書き換える関数
 class savetxt():
   
-  def __init__(self,N):
+  def __init__(self,N,K):
     self.ch=_AWGN()
-    self.cd=PAM(N)
+    self.cd=polar_code(N,K)
     self.mc=MC()
 
   def savetxt(self,BLER,BER):
 
     with open(self.cd.filename,'w') as f:
 
-        #print("#N="+str(self.N),file=f)
-        print("#Strong User SNR="+str(self.cd.EbNodB1),file=f)
-        print("#power allocation beta="+str(self.cd.beta),file=f)
+        print("#N="+str(self.cd.N),file=f)
+        print("#K="+str(self.cd.K),file=f)
+        print("#list_size="+str(self.cd.list_size),file=f)
+        #print("#Strong User SNR="+str(self.cd.EbNodB1),file=f)
+        #print("#power allocation beta="+str(self.cd.beta),file=f)
         print("#TX_antenna="+str(self.mc.TX_antenna),file=f)
         print("#RX_antenna="+str(self.mc.RX_antenna),file=f)
         print("#modulation_symbol="+str(self.ch.M),file=f)
@@ -175,11 +177,11 @@ class savetxt():
 if __name__=="__main__":
     mc=MC()
 
-    N_list=[1024,2048,4096]
+    N_list=[512,1024,2048,4096]
     result_ids_array=[]
     print(mc.EbNodB_range)
     for i,N in enumerate(N_list):
-        cd=PAM(N)
+        cd=polar_code(N,N//2)
         dumped=pickle.dumps(cd)
         print("N=",N)
         result_ids_array.append(mc.monte_carlo_get_ids(dumped))

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[2]:
+# In[1]:
 
 
 import numpy as np
@@ -10,7 +10,7 @@ from decimal import *
 import sympy as sp
 
 
-# In[3]:
+# In[2]:
 
 
 class Improved_GA():
@@ -33,7 +33,7 @@ class Improved_GA():
     self.Z_2=self.xi(self.G_2)
 
 
-# In[4]:
+# In[3]:
 
 
 class Improved_GA(Improved_GA):
@@ -47,7 +47,7 @@ class Improved_GA(Improved_GA):
     return res
 
 
-# In[5]:
+# In[4]:
 
 
 class Improved_GA(Improved_GA):
@@ -93,7 +93,7 @@ class Improved_GA(Improved_GA):
     return gamma
 
 
-# In[6]:
+# In[5]:
 
 
 class Improved_GA(Improved_GA):
@@ -149,9 +149,10 @@ class Improved_GA(Improved_GA):
     return gamma
 
 
-# In[7]:
+# In[6]:
 
 
+'''
 class Improved_GA(Improved_GA):
   def main_const(self,N,K,design_SNR,bit_reverse=True):
     #make n where 2**n=N
@@ -192,9 +193,10 @@ class Improved_GA(Improved_GA):
     tmp=np.argsort(v)
     res=tmp[0:l]
     return res
+'''
 
 
-# In[8]:
+# In[7]:
 
 
 class Improved_GA(Improved_GA):
@@ -204,7 +206,7 @@ class Improved_GA(Improved_GA):
     return max(a,b)+f(abs(a-b))
 
 
-# In[9]:
+# In[8]:
 
 
 class Improved_GA(Improved_GA):
@@ -240,18 +242,18 @@ class Improved_GA(Improved_GA):
     return gamma1+gamma2
   
   
-  def main_const_for_different_SNR(self,N,K,low_des,high_des=1000,ind_low_des=False,ind_high_des=False):
+  def main_const(self,N,K,high_des,beta=1000,ind_high_des=False,ind_low_des=False):
     
     n=np.log2(N).astype(int)
     gamma=np.zeros((n+1,N)) #matrix
     
     #初期値の代入
-    if high_des==1000:
-      gamma[0,:]=4*(10 ** (low_des / 10))
+    if beta==1000:
+      gamma[0,:]=4*(10 ** (high_des / 10))
       
     else:
-      gamma[0,ind_low_des]=4*(10 ** (low_des / 10))
       gamma[0,ind_high_des]=4*(10 ** (high_des / 10))
+      gamma[0,ind_low_des]=(beta)*4*(10 ** (high_des / 10))
     
     for i in range(1,gamma.shape[0]):
       for j in range(gamma.shape[1]):
@@ -269,12 +271,12 @@ class Improved_GA(Improved_GA):
     return frozen_bits, info_bits
 
 
-# In[10]:
+# In[9]:
 
 
 class GA():
     
-  def main_const(self,N,K,low_des,high_des=1000,ind_low_des=False,ind_high_des=False,bit_reverse=False):
+  def main_const(self,N,K,high_des,beta=1000,ind_high_des=False,ind_low_des=False):
     
     
     
@@ -339,12 +341,12 @@ class GA():
     
     gamma=np.zeros((n+1,N)) #matrix
     
-    if high_des==1000:
-      gamma[0,:]=4*(10 ** (low_des / 10))
+    if beta==1000:
+      gamma[0,:]=4*(10 ** (high_des / 10))
       
     else:
-      gamma[0,ind_low_des]=4*(10 ** (low_des / 10))
       gamma[0,ind_high_des]=4*(10 ** (high_des / 10))
+      gamma[0,ind_low_des]=(beta**2)*4*(10 ** (high_des / 10))
     
     for i in range(1,gamma.shape[0]):
       for j in range(gamma.shape[1]):
@@ -374,7 +376,7 @@ class GA():
     return frozen_bits,info_bits
 
 
-# In[11]:
+# In[10]:
 
 
 class GA(GA):
@@ -431,7 +433,7 @@ class GA(GA):
     return gamma
 
 
-# In[12]:
+# In[11]:
 
 
 class inv_GA():
@@ -538,7 +540,7 @@ class inv_GA():
     
 
 
-# In[13]:
+# In[12]:
 
 
 class inv_GA(inv_GA):
@@ -593,7 +595,7 @@ class inv_GA(inv_GA):
     return gamma
 
 
-# In[14]:
+# In[13]:
 
 
 class inv_GA(inv_GA):
@@ -657,7 +659,7 @@ class inv_GA(inv_GA):
     return gamma
 
 
-# In[15]:
+# In[14]:
 
 
 class monte_carlo():
@@ -686,57 +688,69 @@ class monte_carlo():
     return frozen_bits,info_bits
 
 
-# In[16]:
+# In[15]:
+
+
+#N=1024
+#K=512
+#design_SNR=0
+#const=monte_carlo()
+#f,b=const.main_const(N,K,design_SNR)
+
+
+# In[1]:
 
 
 #check
 if __name__=="__main__":
-  N=1024
+  N=16
   const1=Improved_GA()
-  frozen1,info1=const1.main_const(N,N//2,10)
+  frozen1,info1=const1.main_const(N,N//2,0,0.1,np.arange(N//2,N),np.arange(0,N//2))
   #print(np.sum(frozen1!=a))
-  
+  print(frozen1)
   
   const2=GA()
-  frozen2,info2=const2.main_const(N,N//2,10)
+  frozen2,info2=const2.main_const(N,N//2,0,0.1,np.arange(N//2,N),np.arange(0,N//2))
   
   print(np.any(frozen1!=frozen2))
   
-  const3=inv_GA()
-  low,high=const3.main_const(N,frozen2,info2)
+  #const3=inv_GA()
+  #low,high=const3.main_const(N,frozen2,info2,np.arange(N//2,N),np.arange(0,N//2))
   
   a=np.any(frozen1!=frozen2)
-  print(a)
-
-
-# In[17]:
-
-
-if __name__=="__main__":
-  N=1024
-  K=N//2
-  const1=Improved_GA()
-  f,i=const1.main_const_for_different_SNR(N,K,0,-10,np.arange(0,K),np.arange(K,N))
-
-  const2=GA()
-  f2,i2=const2.main_const(N,K,0,-10,np.arange(0,K),np.arange(K,N))
+  #print(a)
 
 
 # In[18]:
 
 
 if __name__=="__main__":
-  
+  N=1024
+  K=N//2
+  const1=Improved_GA()
+  f,i=const1.main_const(N,K,0)#,-10,np.arange(0,K),np.arange(K,N))
+
   const2=GA()
-  frozen2,info2=const2.main_const(N,N//2,0,)
+  f2,i2=const2.main_const(N,K,0,-10,np.arange(0,K),np.arange(K,N))
+
+
+# In[ ]:
+
+
+if __name__=="__main__":
+  N=1024
+  K=N//2
+  const2=Improved_GA()
+  const2.main_const_for_different_SNR(N,K,-10,0)
+  #frozen2,info2=const2.main_const(N,N//2,0,)
   
-  info2=np.arange(0,N//2)
-  frozen2=np.arange(N//2,N)
-  print(len(frozen2))
-  print(len(info2))
+  #info2=np.arange(0,N//2)
+  #frozen2=np.arange(N//2,N)
+  #print(len(frozen2))
+  #print(len(info2))
   
-  const3=inv_GA()
-  low,high=const3.main_const(N,frozen2,info2)
+  #const3=inv_GA()
+  #low,high=const3.main_const(N,frozen2,info2)
   
   count=0
   
