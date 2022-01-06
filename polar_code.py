@@ -42,7 +42,7 @@ class coding():
       self.decoder_var=0
     
     self.adaptive_design_SNR=False #default:False
-    self.systematic_polar=True #default:false
+    self.systematic_polar=False #default:false
 
     #for SCL decoder
     self.list_size=4
@@ -161,7 +161,7 @@ class encoding(coding):
   def generate_information(self):
     #generate information
     
-    if K!=0:
+    if self.K!=0:
       information=np.random.randint(0,2,self.K)
     
     else:
@@ -386,7 +386,7 @@ class decoding(decoding):
     if self.K!=0: 
       res=EST_codeword[self.itr_num]
     else:
-      res=EST_codeword[self.itr_num]
+      res=llr[self.itr_num]
       #np.savetxt("llr",res)
       #from IPython.core.debugger import Pdb; Pdb().set_trace()
       

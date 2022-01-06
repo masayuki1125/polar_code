@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[35]:
 
 
 import numpy as np
@@ -10,7 +10,7 @@ from decimal import *
 import sympy as sp
 
 
-# In[2]:
+# In[36]:
 
 
 class Improved_GA():
@@ -33,7 +33,7 @@ class Improved_GA():
     self.Z_2=self.xi(self.G_2)
 
 
-# In[3]:
+# In[37]:
 
 
 class Improved_GA(Improved_GA):
@@ -47,7 +47,7 @@ class Improved_GA(Improved_GA):
     return res
 
 
-# In[4]:
+# In[38]:
 
 
 class Improved_GA(Improved_GA):
@@ -93,7 +93,7 @@ class Improved_GA(Improved_GA):
     return gamma
 
 
-# In[5]:
+# In[39]:
 
 
 class Improved_GA(Improved_GA):
@@ -149,7 +149,7 @@ class Improved_GA(Improved_GA):
     return gamma
 
 
-# In[6]:
+# In[40]:
 
 
 '''
@@ -196,7 +196,7 @@ class Improved_GA(Improved_GA):
 '''
 
 
-# In[7]:
+# In[41]:
 
 
 class Improved_GA(Improved_GA):
@@ -206,7 +206,7 @@ class Improved_GA(Improved_GA):
     return max(a,b)+f(abs(a-b))
 
 
-# In[8]:
+# In[42]:
 
 
 class Improved_GA(Improved_GA):
@@ -253,7 +253,7 @@ class Improved_GA(Improved_GA):
       
     else:
       gamma[0,ind_high_des]=4*(10 ** (high_des / 10))
-      gamma[0,ind_low_des]=(beta)*4*(10 ** (high_des / 10))
+      gamma[0,ind_low_des]=(beta**2)*4*(10 ** (high_des / 10))
     
     for i in range(1,gamma.shape[0]):
       for j in range(gamma.shape[1]):
@@ -271,7 +271,7 @@ class Improved_GA(Improved_GA):
     return frozen_bits, info_bits
 
 
-# In[9]:
+# In[43]:
 
 
 class GA():
@@ -376,7 +376,7 @@ class GA():
     return frozen_bits,info_bits
 
 
-# In[10]:
+# In[44]:
 
 
 class GA(GA):
@@ -433,7 +433,7 @@ class GA(GA):
     return gamma
 
 
-# In[11]:
+# In[45]:
 
 
 class inv_GA():
@@ -540,7 +540,7 @@ class inv_GA():
     
 
 
-# In[12]:
+# In[46]:
 
 
 class inv_GA(inv_GA):
@@ -595,7 +595,7 @@ class inv_GA(inv_GA):
     return gamma
 
 
-# In[13]:
+# In[47]:
 
 
 class inv_GA(inv_GA):
@@ -659,60 +659,158 @@ class inv_GA(inv_GA):
     return gamma
 
 
-# In[14]:
+# In[48]:
 
 
 class monte_carlo():
-    
-  def main_const(self,N,K_res,design_SNR,bit_reverse=False):
-    from polar_code import polar_code
-    self.pc=polar_code(N,0)
-    
-    #prepere constant
-    c=np.zeros(N)
-    M=10**3
-    for _ in range(M):
-      _,codeword=self.pc.polar_encode()
-      Lc=-1*self.pc.ch.generate_LLR(codeword,design_SNR)#デコーダが＋、ー逆になってしまうので-１をかける
-      llr=self.pc.polar_decode(Lc) 
       
-      d=llr
-      d[llr<1]=1
-      d[llr>=1]=0
-      c=c+d
+  def main_const(self,N,K_res,high_des,beta=1000,ind_high_des=False,ind_low_des=False):
+    
+    '''
+    import ray
+    ray.init()
+    
+
+    
+    result_ids=[]
+        
+    for _ in range(10):
+      #multiprocess    
+      result_ids.append(output.remote(N,high_des,beta=1000,ind_high_des=False,ind_low_des=False))  # 並列演算
+      #resultは長さ1のリストの中にBLER,BERの2つのarrayのtupleが入った配列
+    
+    result=ray.get(result_ids)
+    
+    c_all=np.zeros(N)
+    for k in range(10):
+      tmp1=result[k]
+      c_all+=tmp1
+
+    print(c_all)
+    '''
+    c=self.output(N,high_des,beta=1000,ind_high_des=False,ind_low_des=False)
     
     tmp=np.argsort(c)
     frozen_bits=np.sort(tmp[:N-K_res])
     info_bits=np.sort(tmp[N-K_res:])
     
     return frozen_bits,info_bits
+    #return result
 
 
-# In[15]:
+# In[49]:
 
 
-#N=1024
-#K=512
-#design_SNR=0
-#const=monte_carlo()
-#f,b=const.main_const(N,K,design_SNR)
+class monte_carlo(monte_carlo):
+#@ray.remote
+  def output(self,N,high_des,beta=1000,ind_high_des=False,ind_low_des=False):
+    
+    #あるSNRで計算結果を出力する関数を作成
+    #cd.main_func must input 'EbNodB' and output 1D 'codeword' and 'EST_codeword'
+
+    from polar_code import polar_code
+
+    self.pc=polar_code(N,0)
+    #prepere constant
+    c=np.zeros(N)
+    M=5*10**4
+    
+    #seed値の設定
+    #np.random.seed()
+
+    for _ in range(M):
+      _,codeword=self.pc.polar_encode()
+      
+      if beta==1000:
+        Lc=-1*self.pc.ch.generate_LLR(codeword,high_des)#デコーダが＋、ー逆になってしまうので-１をかける
+      else:#for 4PAM NOMA
+        [cwd1,cwd2]=np.split(codeword,2)
+        const1=self.pc.ch.generate_QAM(cwd1)
+        const2=self.pc.ch.generate_QAM(cwd2)
+        res_const=beta*const1*(-1*const2)+const2
+        
+        high_des = 10 ** (high_des / 10)
+        No=1/high_des
+        RX_const=self.pc.ch.add_AWGN(res_const,No)
+        RX_const=RX_const.real #In_phaseのみ取り出す
+        tmp_Lc=-1*self.calc_LLR(RX_const,No,beta)
+        
+        Lc=np.zeros(len(tmp_Lc))
+        Lc[ind_low_des]=tmp_Lc[0:len(tmp_Lc)//2]
+        Lc[ind_high_des]=tmp_Lc[len(tmp_Lc)//2:len(tmp_Lc)]
+        
+      llr=self.pc.polar_decode(Lc) 
+        
+      d=np.zeros(len(llr))
+        #print(llr)
+        #from IPython.core.debugger import Pdb; Pdb().set_trace()
+      d[llr<1]=0
+      d[llr>=1]=1
+      c=c+d
+
+    return c
 
 
-# In[1]:
+# In[50]:
+
+
+class monte_carlo(monte_carlo):
+  @staticmethod
+  def calc_exp(x,A,No):
+    #解が0にならないように計算する
+    res=np.zeros(len(x))
+    for i in range(len(x)):
+      if (x[i]-A)**2/No<30:
+        res[i]=np.exp(-1*(x[i]-A)**2/No)
+      else:
+        res[i]=10**(-15)
+    return res
+  
+  def calc_LLR(self,x,No,beta):
+    A1=self.calc_exp(x,-1-beta,No)
+    A2=self.calc_exp(x,-1+beta,No)
+    A3=self.calc_exp(x,1-beta,No)
+    A4=self.calc_exp(x,1+beta,No)
+    
+    y2=np.log((A3+A4)/(A1+A2))
+    y1=np.log((A2+A3)/(A1+A4))
+    #print(y2)
+    #print(y1)
+    
+    return np.concatenate([y1,y2])
+
+
+# In[51]:
+
+
+
+if __name__=="__main__":
+  N=512
+  K=256
+  design_SNR=0
+  beta=0.1
+  const=monte_carlo()
+  f,i=const.main_const(N,K,design_SNR,beta,np.arange(N//2,N),np.arange(0,N//2))
+  np.savetxt("f",f,fmt='%i')
+  np.savetxt("i",i,fmt='%i')
+  
+
+
+# In[90]:
 
 
 #check
 if __name__=="__main__":
-  N=16
+  N=512
   const1=Improved_GA()
-  frozen1,info1=const1.main_const(N,N//2,0,0.1,np.arange(N//2,N),np.arange(0,N//2))
+  frozen1,info1=const1.main_const(N,N//2,0)
   #print(np.sum(frozen1!=a))
   print(frozen1)
   
   const2=GA()
-  frozen2,info2=const2.main_const(N,N//2,0,0.1,np.arange(N//2,N),np.arange(0,N//2))
+  frozen2,info2=const2.main_const(N,N//2,0,0.5,np.arange(N//2,N),np.arange(0,N//2))
   
-  print(np.any(frozen1!=frozen2))
+  print(np.any(frozen1!=f))
   
   #const3=inv_GA()
   #low,high=const3.main_const(N,frozen2,info2,np.arange(N//2,N),np.arange(0,N//2))
@@ -721,17 +819,18 @@ if __name__=="__main__":
   #print(a)
 
 
-# In[18]:
+# In[ ]:
 
 
 if __name__=="__main__":
   N=1024
   K=N//2
   const1=Improved_GA()
-  f,i=const1.main_const(N,K,0)#,-10,np.arange(0,K),np.arange(K,N))
+  f,i=const1.main_const(N,K,0,-10,np.arange(0,K),np.arange(K,N))
 
   const2=GA()
   f2,i2=const2.main_const(N,K,0,-10,np.arange(0,K),np.arange(K,N))
+  
 
 
 # In[ ]:
