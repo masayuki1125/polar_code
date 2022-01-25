@@ -220,7 +220,7 @@ class Improved_GA(Improved_GA):
         
       sq=1/2*gamma1*gamma2
       cu=-1/4*gamma1*(gamma2**2)-1/4*(gamma1**2)*gamma2
-      fo=5/24*gamma1*(gamma2**2)+1/4*(gamma1**2)*(gamma2**2)+5/24*(gamma1**2)*gamma2
+      fo=5/24*gamma1*(gamma2**3)+1/4*(gamma1**2)*(gamma2**2)+5/24*(gamma1**3)*gamma2
       
       gamma=sq+cu+fo
       

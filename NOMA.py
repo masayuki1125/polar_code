@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[88]:
+# In[2]:
 
 
 import numpy as np
@@ -9,7 +9,7 @@ from polar_code import polar_code
 from AWGN import _AWGN
 
 
-# In[89]:
+# In[3]:
 
 
 #最適なβの値の設計方法
@@ -19,29 +19,36 @@ from AWGN import _AWGN
 #④β=β1/β2とし、Weak Userの受信SNRを変化させて、全体のsystemのBERを測定する
 
 
-# In[90]:
+# In[3]:
 
 
 class NOMA():
-  def __init__(self,N):
+  def __init__(self,N,beta1=0.2):
     self.N=N
     self.K=self.N//2
+    
+    self.N1=self.N//2
+    self.K1=self.K//2
+    self.N2=self.N//2
+    self.K2=self.K//2
     #EbNodB1>EbNodB2
     #User1=Strong User(Fixed)
     #User2=Weak User
-    self.EbNodB1=10
+    self.EbNodB_diff=10
     
     #Strong Userの受信SNから、βを決定する
-    self.beta=0.1
+    
+    self.beta=(beta1**(1/2))/((1-beta1)**(1/2))
+    print(self.beta)
     
     #self.EbNodB2 change
     
-    EbNo1 = 10 ** (self.EbNodB1 / 10)
-    self.No1=1/EbNo1
+    #EbNo1 = 10 ** (self.EbNodB1 / 10)
+    #self.No1=1/EbNo1
     
     self.ch=_AWGN()
-    self.cd1=polar_code(N//2)
-    self.cd2=polar_code(N//2)
+    self.cd1=polar_code(self.N1,self.K1)
+    self.cd2=polar_code(self.N2,self.K2)
     
     self.filename="NOMA_polar_{}_{}".format(self.N,self.K)
     
@@ -51,21 +58,7 @@ class NOMA():
     return info1,info2,cwd1,cwd2
 
 
-# In[91]:
-
-
-'''
-class NOMA(NOMA):
-  def make_beta(EsNodB):
-    EsNo = 10 ** (EsNodB / 10)
-    No=1/EsNo
-    #Strong UserのCapacityを求める
-    x, y = sym.symbols("x y")
-    st_usr=sym.log(1+x/No,2)
-'''
-
-
-# In[92]:
+# In[29]:
 
 
 class NOMA(NOMA):
@@ -115,21 +108,25 @@ class NOMA(NOMA):
   
   def main_func(self,EbNodB2):
     #make No2
+    EbNodB1=EbNodB2+self.EbNodB_diff
+    EbNo1 = 10 ** (EbNodB1 / 10)
+    No1=1/EbNo1
+    
     EbNo2 = 10 ** (EbNodB2 / 10)
     No2=1/EbNo2
     
     #change construction
-    if self.EbNodB1!=self.cd1.design_SNR:
-      self.cd1.design_SNR=self.EbNodB1
-      self.cd1.frozen_bits,self.cd1.info_bits=self.cd1.choose_frozen_bits(self.cd1.design_SNR,self.beta)
+    if EbNodB1!=self.cd1.design_SNR:
+      self.cd1.design_SNR=EbNodB1
+      self.cd1.frozen_bits,self.cd1.info_bits=self.cd1.const.main_const(self.N1,self.K1,self.cd1.design_SNR)#,self.beta)
       
     if EbNodB2!=self.cd2.design_SNR:
       self.cd2.design_SNR=EbNodB2
-      self.cd2.frozen_bits,self.cd2.info_bits=self.cd2.choose_frozen_bits(self.cd2.design_SNR)
+      self.cd2.frozen_bits,self.cd2.info_bits=self.cd2.const.main_const(self.N2,self.K2,self.cd2.design_SNR)
     
     info1,info2,cwd1,cwd2=self.NOMA_encode()
     res_const=self.channel(cwd1,cwd2,self.beta)
-    EST_info1,EST_info2=self.NOMA_decode(res_const,self.No1,No2)
+    EST_info1,EST_info2=self.NOMA_decode(res_const,No1,No2)
     
     info=np.concatenate([info1,info2])
     #cwd=np.concatenate([cwd1,cwd2])
@@ -139,11 +136,18 @@ class NOMA(NOMA):
     
 
 
-# In[106]:
+# In[31]:
 
 
 if __name__=="__main__":
   ma=NOMA(1024)
-  a,b=ma.main_func(-2)
+  a,b=ma.main_func(100)
   print(np.sum(a!=b))
+  print(a!=b)
+
+
+# In[ ]:
+
+
+
 

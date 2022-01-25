@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[32]:
+# In[4]:
 
 
 import numpy as np
@@ -11,23 +11,24 @@ from polar_construction import Improved_GA
 #import sympy as sym
 
 
-# In[33]:
+# In[5]:
 
 
 class PAM():
-  def __init__(self,N):
+  def __init__(self,N,beta1=0.2):
     self.N=N
     self.K=N//2
     #EbNodB1>EbNodB2
-    self.EbNodB1=20
+    self.EbNodB_diff=10
     #self.EbNodB2=10
     
-    EbNo1 = 10 ** (self.EbNodB1 / 10)
-    self.No1=1/EbNo1
+    #EbNo1 = 10 ** (self.EbNodB1 / 10)
+    #self.No1=1/EbNo1
     #EbNo2 = 10 ** (self.EbNodB2 / 10)
     #self.No2=1/EbNo2
     
-    self.beta=0.1
+    self.beta=(beta1**(1/2))/((1-beta1)**(1/2))
+    print(self.beta)
     
     self.ch=_AWGN()
     self.cd=polar_code(self.N,self.K)
@@ -120,32 +121,60 @@ class PAM():
     return EST_cwd1,EST_cwd2
   
   def main_func(self,EbNodB2):
-    #calc No2
+    #calc No1 and No2
+    EbNodB1=EbNodB2+self.EbNodB_diff
+    EbNo1 = 10 ** (EbNodB1 / 10)
+    No1=1/EbNo1
     EbNo2 = 10 ** (EbNodB2 / 10)
     No2=1/EbNo2
     
     #change construction
     if EbNodB2!=self.cd.design_SNR:
       self.cd.design_SNR=EbNodB2
-      self.cd.frozen_bits,self.cd.info_bits=self.cd.const.main_const_for_different_SNR(self.N,self.K,self.cd.design_SNR,self.beta,np.arange(self.N//2,self.N),np.arange(0,self.N//2))
+      #decide frozen_bits
+      count=0
+      f1,i1=self.cd.const.main_const(self.N,self.K,self.cd.design_SNR,self.beta,np.arange(self.N//2,self.N),np.arange(0,self.N//2))
+      while True:
+        self.cd.frozen_bits,self.cd.info_bits=self.cd.const.main_const(self.N,self.K,self.cd.design_SNR,self.beta,i1,f1)
+        if np.all(i1==self.cd.info_bits):
+          break
+        else:
+          f1=self.cd.frozen_bits
+          i1=self.cd.info_bits
+          count+=1
+          print(count)
+    #f=np.loadtxt("f",dtype=int)
+    #i=np.loadtxt("i",dtype=int)
+    #self.cd.frozen_bits=f
+    #self.cd.info_bits=i
     
     info,cwd=self.PAM_encode()
     
     res_const=self.channel(cwd,self.beta)
     
     
-    EST_info1,EST_info2=self.PAM_decode(res_const,self.No1,No2)
+    EST_info1,EST_info2=self.PAM_decode(res_const,No1,No2)
 
     EST_info=np.concatenate([EST_info1,EST_info2])
     
     return info,EST_info
 
 
-# In[37]:
+# In[34]:
+
+
+'''
+import numpy as np
+a=np.loadtxt("f",dtype=int)
+print(a)
+'''
+
+
+# In[13]:
 
 
 if __name__=="__main__":
-  N=1024
+  N=512
   ma=PAM(N)
   a,b=ma.main_func(2)
   #print(a)
