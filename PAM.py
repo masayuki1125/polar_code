@@ -28,12 +28,12 @@ class PAM():
     #self.No2=1/EbNo2
     
     self.beta=(beta1**(1/2))/((1-beta1)**(1/2))
-    print(self.beta)
+    #print(self.beta)
     
     self.ch=_AWGN()
     self.cd=polar_code(self.N,self.K)
     
-    self.filename="PAM_polar_Improved_GA{}_{}".format(self.N,self.K)
+    self.filename="PAM_polar_Improved_GA_{}_{}_{}".format(self.beta,self.N,self.K)
     
     #self.intleav,self.deintleav=self.interleaver(N)
     
@@ -142,7 +142,7 @@ class PAM():
           f1=self.cd.frozen_bits
           i1=self.cd.info_bits
           count+=1
-          print(count)
+          #print(count)
     #f=np.loadtxt("f",dtype=int)
     #i=np.loadtxt("i",dtype=int)
     #self.cd.frozen_bits=f

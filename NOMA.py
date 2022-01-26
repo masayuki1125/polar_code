@@ -37,9 +37,12 @@ class NOMA():
     self.EbNodB_diff=10
     
     #Strong Userの受信SNから、βを決定する
-    
+    print("beta1")
+    print(beta1)
     self.beta=(beta1**(1/2))/((1-beta1)**(1/2))
     print(self.beta)
+    print("beta")
+    
     
     #self.EbNodB2 change
     
@@ -50,7 +53,7 @@ class NOMA():
     self.cd1=polar_code(self.N1,self.K1)
     self.cd2=polar_code(self.N2,self.K2)
     
-    self.filename="NOMA_polar_{}_{}".format(self.N,self.K)
+    self.filename="NOMA_polar_{}_{}_{}".format(self.beta,self.N,self.K)
     
   def NOMA_encode(self):
     info1,cwd1=self.cd1.polar_encode()

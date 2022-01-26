@@ -7,7 +7,7 @@
 import numpy as np
 import ray
 import pickle
-from polar_code import polar_code
+from PAM import PAM
 from AWGN import _AWGN
 
 
@@ -64,8 +64,8 @@ class MC():
         self.TX_antenna=1
         self.RX_antenna=1
         self.MAX_ERR=10
-        self.EbNodB_start=-5
-        self.EbNodB_end=1
+        self.EbNodB_start=-1
+        self.EbNodB_end=5
         self.EbNodB_range=np.arange(self.EbNodB_start,self.EbNodB_end,0.5) #0.5dBごとに測定
 
     #特定のNに関する出力
@@ -151,7 +151,7 @@ class savetxt():
   
   def __init__(self,N,K):
     self.ch=_AWGN()
-    self.cd=polar_code(N,K)
+    self.cd=PAM(N)
     self.mc=MC()
 
   def savetxt(self,BLER,BER):
@@ -160,7 +160,7 @@ class savetxt():
 
         print("#N="+str(self.cd.N),file=f)
         print("#K="+str(self.cd.K),file=f)
-        print("#list_size="+str(self.cd.list_size),file=f)
+        #print("#list_size="+str(self.cd.list_size),file=f)
         #print("#Strong User SNR="+str(self.cd.EbNodB1),file=f)
         #print("#power allocation beta="+str(self.cd.beta),file=f)
         print("#TX_antenna="+str(self.mc.TX_antenna),file=f)
@@ -177,11 +177,11 @@ class savetxt():
 if __name__=="__main__":
     mc=MC()
 
-    N_list=[512,1024,2048,4096]
+    N_list=[1024,2048,4096]
     result_ids_array=[]
     print(mc.EbNodB_range)
     for i,N in enumerate(N_list):
-        cd=polar_code(N,N//2)
+        cd=PAM(N)
         dumped=pickle.dumps(cd)
         print("N=",N)
         result_ids_array.append(mc.monte_carlo_get_ids(dumped))

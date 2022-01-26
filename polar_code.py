@@ -11,7 +11,7 @@ from decimal import *
 from AWGN import _AWGN
 from polar_construction import Improved_GA
 from polar_construction import GA
-
+from polar_construction import monte_carlo
 
 # In[2]:
 
@@ -36,10 +36,12 @@ class coding():
     
     #decide channel coding variance
     self.ch=_AWGN()
-    self.const=Improved_GA() #Improved_GA,GA
-    self.decoder_var=0 #0:SC 1:SCL 2:SCL_CRC
+    if self.K!=0:
+      self.const=Improved_GA() #Improved_GA,GA
+      self.decoder_var=0 #0:SC 1:SCL 2:SCL_CRC
     if self.K==0: #for monte_carlo_construction
       self.decoder_var=0
+      self.const=GA()
     
     self.adaptive_design_SNR=False #default:False
     self.systematic_polar=False #default:false

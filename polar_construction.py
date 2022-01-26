@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[35]:
+# In[2]:
 
 
 import numpy as np
@@ -10,7 +10,7 @@ from decimal import *
 import sympy as sp
 
 
-# In[36]:
+# In[3]:
 
 
 class Improved_GA():
@@ -33,7 +33,7 @@ class Improved_GA():
     self.Z_2=self.xi(self.G_2)
 
 
-# In[37]:
+# In[4]:
 
 
 class Improved_GA(Improved_GA):
@@ -47,7 +47,7 @@ class Improved_GA(Improved_GA):
     return res
 
 
-# In[38]:
+# In[5]:
 
 
 class Improved_GA(Improved_GA):
@@ -93,7 +93,7 @@ class Improved_GA(Improved_GA):
     return gamma
 
 
-# In[39]:
+# In[6]:
 
 
 class Improved_GA(Improved_GA):
@@ -149,7 +149,7 @@ class Improved_GA(Improved_GA):
     return gamma
 
 
-# In[40]:
+# In[7]:
 
 
 '''
@@ -196,7 +196,7 @@ class Improved_GA(Improved_GA):
 '''
 
 
-# In[41]:
+# In[8]:
 
 
 class Improved_GA(Improved_GA):
@@ -206,7 +206,7 @@ class Improved_GA(Improved_GA):
     return max(a,b)+f(abs(a-b))
 
 
-# In[42]:
+# In[9]:
 
 
 class Improved_GA(Improved_GA):
@@ -271,7 +271,7 @@ class Improved_GA(Improved_GA):
     return frozen_bits, info_bits
 
 
-# In[43]:
+# In[10]:
 
 
 class GA():
@@ -376,7 +376,7 @@ class GA():
     return frozen_bits,info_bits
 
 
-# In[44]:
+# In[11]:
 
 
 class GA(GA):
@@ -433,7 +433,7 @@ class GA(GA):
     return gamma
 
 
-# In[45]:
+# In[12]:
 
 
 class inv_GA():
@@ -540,7 +540,7 @@ class inv_GA():
     
 
 
-# In[46]:
+# In[13]:
 
 
 class inv_GA(inv_GA):
@@ -595,7 +595,7 @@ class inv_GA(inv_GA):
     return gamma
 
 
-# In[47]:
+# In[14]:
 
 
 class inv_GA(inv_GA):
@@ -659,7 +659,7 @@ class inv_GA(inv_GA):
     return gamma
 
 
-# In[48]:
+# In[15]:
 
 
 class monte_carlo():
@@ -698,7 +698,7 @@ class monte_carlo():
     #return result
 
 
-# In[49]:
+# In[16]:
 
 
 class monte_carlo(monte_carlo):
@@ -751,7 +751,7 @@ class monte_carlo(monte_carlo):
     return c
 
 
-# In[50]:
+# In[17]:
 
 
 class monte_carlo(monte_carlo):
@@ -780,7 +780,7 @@ class monte_carlo(monte_carlo):
     return np.concatenate([y1,y2])
 
 
-# In[51]:
+# In[18]:
 
 
 
@@ -791,7 +791,6 @@ if __name__=="__main__":
   beta=0.1
   const=monte_carlo()
   f,i=const.main_const(N,K,design_SNR,beta,np.arange(N//2,N),np.arange(0,N//2))
-  np.savetxt("f",f,fmt='%i')
   np.savetxt("i",i,fmt='%i')
   
 
