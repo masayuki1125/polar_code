@@ -78,7 +78,7 @@ class _AWGN():
         interference=np.random.randint(0,2,len(constellation))
 
         # AWGN通信路 = 送信シンボル間干渉が生じないような通信路で送信
-        RX_constellation = (beta)**(1/2)*constellation + noise +(1-beta)**(1/2)*interference
+        RX_constellation = (1-beta)**(1/2)*constellation + noise +(beta)**(1/2)*interference
 
         # 以下のprint関数の出力を表示すると、Noとほぼ一致するはず
         #print(np.dot(noise[0, :], np.conj(noise[0, :]))/bit_num)
@@ -118,6 +118,7 @@ class _AWGN():
             RX_constellation=self.add_AWGN(constellation,No,self.beta)
         else:
             RX_constellation=self.add_Rayleigh(constellation,No,self.beta)
+            
         Lc=self.demodulate(RX_constellation,No)
         #print(Lc)
         return Lc
