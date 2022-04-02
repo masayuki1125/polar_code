@@ -40,19 +40,20 @@ class _AWGN():
             yield k ^ (k >> 1)
     '''
 
-
-    def generate_BPSK(self,info,beta):
+    def generate_QAM(self,info):
         if self.M_bits==1:
             conste=2*info-1
         
-        return (beta)**(1/2)*conste
+        return conste
     
+    '''
     def generate_PAM(self,info1,info2,beta=0.2):
         const1=(beta)**(1/2)*(2*info1-1)
         const2=((1-beta))**(1/2)*(2*info2-1)
         const=const1+const2
         
         return const
+    '''
 
     def add_AWGN(self,constellation,No,beta):
 
@@ -77,7 +78,7 @@ class _AWGN():
         interference=np.random.randint(0,2,len(constellation))
 
         # AWGN通信路 = 送信シンボル間干渉が生じないような通信路で送信
-        RX_constellation = beta**(1/2)*constellation + noise +(1-beta)**(1/2)*interference
+        RX_constellation = (beta)**(1/2)*constellation + noise +(1-beta)**(1/2)*interference
 
         # 以下のprint関数の出力を表示すると、Noとほぼ一致するはず
         #print(np.dot(noise[0, :], np.conj(noise[0, :]))/bit_num)

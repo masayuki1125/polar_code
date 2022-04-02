@@ -139,8 +139,6 @@ def liner_approx(K_list,BLER_list,target_BLER):
 
 
 # In[11]:
-
-
 def est_InfoRate(N,EsNodB,beta,Rayleigh):
   print("beta=",beta)
   #set constant
@@ -222,9 +220,7 @@ def est_InfoLength(N,K_init,EsNodB,beta,target_BLER,Rayleigh):
       
   return K_res
 
-
 # In[6]:
-
 EsNodB2=0
 data_num=10
 for n in [256,512]:
@@ -234,8 +230,8 @@ for n in [256,512]:
     
     for i in range(1,data_num):  
       print(EsNodB2)
-      R1[i]=est_InfoRate(n,EsNodB1,i/data_num,False)
-      R2[i]=est_InfoRate(n,EsNodB2,1-i/data_num,True)
+      #R1[i]=est_InfoRate(n,EsNodB1,i/data_num,False)
+      R2[i]=est_InfoRate(n,EsNodB2,i/data_num,True)
       print("R1,R2=",R1[i],R2[i])
     
     filename="Rate_polar_{}_{}_{}".format(EsNodB1,EsNodB2,n)

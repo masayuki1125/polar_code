@@ -13,11 +13,8 @@ from AWGN import _AWGN
 
 # In[4]:
 
-
 ray.init()
-
 # In[ ]:
-
 
 @ray.remote()
 def output(dumped,EbNodB):
@@ -54,8 +51,6 @@ def output(dumped,EbNodB):
             count_bitall+=len(information)
 
         return count_err,count_all,count_biterr,count_bitall
-
-
 # In[11]:
 
 
