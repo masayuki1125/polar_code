@@ -207,9 +207,15 @@ def est_InfoLength(N,K_init,EsNodB,beta,target_BLER,Rayleigh):
     
     #change K_res
     if BLER>target_BLER:
-      K_res-=change
+      if K_res-change<=0:
+        K_res=1
+      else:
+        K_res-=change
     else:
-      K_res+=change
+      if K_res+change>=N:
+        K_res=N-1
+      else:
+        K_res+=change
     
     print("K=",K_res)
         
@@ -230,7 +236,7 @@ for n in [256,512]:
     
     for i in range(1,data_num):  
       print(EsNodB2)
-      #R1[i]=est_InfoRate(n,EsNodB1,i/data_num,False)
+      R1[i]=est_InfoRate(n,EsNodB1,i/data_num,False)
       R2[i]=est_InfoRate(n,EsNodB2,i/data_num,True)
       print("R1,R2=",R1[i],R2[i])
     
