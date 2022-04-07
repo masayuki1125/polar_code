@@ -37,6 +37,9 @@ class coding():
     
     #decide channel coding variance
     self.ch=_AWGN(beta)
+    
+    
+    
     if self.K!=0:
       self.const=Improved_GA() #Improved_GA,GA
       self.decoder_var=2 #0:SC 1:SCL 2:SCL_CRC
@@ -619,7 +622,6 @@ class polar_code(encoding,decoding):
         self.design_SNR=EbNodB
         self.frozen_bits,self.info_bits=self.choose_frozen_bits(self.design_SNR)
       
-    
     information,codeword=self.polar_encode()
     Lc=-1*self.ch.generate_LLR(codeword,EbNodB,self.Rayleigh)#デコーダが＋、ー逆になってしまうので-１をかける
     EST_information=self.polar_decode(Lc) 

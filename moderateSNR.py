@@ -129,11 +129,14 @@ class MC():
 def liner_approx(K_list,BLER_list,target_BLER):
   log_target_BLER=np.log10(target_BLER)
   log_BLER=np.log10(BLER_list)
-
+  print(K_list,log_BLER)
   #回帰直線
   linear=np.polyfit(K_list,log_BLER,1)
-
+  print(linear)
   target_K=(log_target_BLER-linear[1])/linear[0]
+  
+  if target_K<0:
+    target_K=0
 
   return target_K
 
@@ -175,7 +178,7 @@ def est_InfoLength(N,K_init,EsNodB,beta,target_BLER,Rayleigh):
   itr_num=0
   MAX_ITR=5
   K_list=np.zeros(MAX_ITR)
-  BLER_list=np.zeros(MAX_ITR)
+  BLER_list=np.ones(MAX_ITR)
   while itr_num<MAX_ITR:
     #initialize channel coding 
     print(N,K_res,beta,Rayleigh)
@@ -184,7 +187,10 @@ def est_InfoLength(N,K_init,EsNodB,beta,target_BLER,Rayleigh):
     
     #calcurate BLER
     BLER,_=est_BLER(EsNodB,dumped,target_BLER)
-    print((N,K_res),BLER)    
+    print((N,K_res),BLER)  
+    if K_res==1 and BLER>target_BLER*10:
+      K_res=0
+      return K_res  
     
     #測定範囲はtarget_BLER*100>x>target_BLER/100
     if BLER==0.0 or BLER>target_BLER*100:
@@ -209,6 +215,9 @@ def est_InfoLength(N,K_init,EsNodB,beta,target_BLER,Rayleigh):
     if BLER>target_BLER:
       if K_res-change<=0:
         K_res=1
+        #処理がスタックしないようにする
+        itr_num+=1
+        
       else:
         K_res-=change
     else:
@@ -222,6 +231,7 @@ def est_InfoLength(N,K_init,EsNodB,beta,target_BLER,Rayleigh):
     itr_num+=1
     print(itr_num)
   
+  print(K_list,BLER_list)
   K_res=liner_approx(K_list,BLER_list,target_BLER)
       
   return K_res
@@ -234,7 +244,7 @@ for n in [256,512]:
     R1=np.zeros(data_num)
     R2=np.zeros(data_num)
     
-    for i in range(1,data_num):  
+    for i in range(1,data_num-1):  
       print(EsNodB2)
       R1[i]=est_InfoRate(n,EsNodB1,i/data_num,False)
       R2[i]=est_InfoRate(n,EsNodB2,i/data_num,True)
