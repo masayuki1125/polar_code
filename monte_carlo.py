@@ -171,7 +171,7 @@ class savetxt():
 # In[ ]:
 if __name__=="__main__":
     mc=MC()
-
+    
     N_list=[1024,2048,4096]
     result_ids_array=[]
     print(mc.EbNodB_range)

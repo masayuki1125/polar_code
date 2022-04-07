@@ -744,8 +744,8 @@ class monte_carlo(monte_carlo):
       d=np.zeros(len(llr))
         #print(llr)
         #from IPython.core.debugger import Pdb; Pdb().set_trace()
-      d[llr<1]=0
-      d[llr>=1]=1
+      d[llr<0]=0
+      d[llr>=0]=1
       c=c+d
 
     return c

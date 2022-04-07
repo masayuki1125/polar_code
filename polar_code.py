@@ -18,7 +18,7 @@ from polar_construction import monte_carlo
 
 
 class coding():
-  def __init__(self,N,K,beta=1,Rayleigh=False):
+  def __init__(self,N,K,beta=1,M=2,Rayleigh=False):
     super().__init__()
     '''
     polar_decode
@@ -36,9 +36,7 @@ class coding():
     self.Rayleigh=Rayleigh
     
     #decide channel coding variance
-    self.ch=_AWGN(beta)
-    
-    
+    self.ch=_AWGN(beta,M)
     
     if self.K!=0:
       self.const=Improved_GA() #Improved_GA,GA
@@ -114,9 +112,7 @@ class coding(coding):
 
     return res
 
-
 # In[5]:
-
 
 class coding(coding):
   def CRC_gen(self,information,polynomial):
@@ -161,8 +157,8 @@ class coding(coding):
 
 
 class encoding(coding):
-  def __init__(self,N,K,beta=1,Rayleigh=False):
-    super().__init__(N,K,beta,Rayleigh)
+  def __init__(self,N,K,beta=1,M=2,Rayleigh=False):
+    super().__init__(N,K,beta,M,Rayleigh)
   
   def generate_information(self):
     #generate information
@@ -288,8 +284,8 @@ class encoding(encoding):
 
 class decoding(coding):
 
-  def __init__(self,N,K,beta=1,Rayleigh=False):
-    super().__init__(N,K,beta,Rayleigh)
+  def __init__(self,N,K,beta=1,M=2,Rayleigh=False):
+    super().__init__(N,K,beta,M,Rayleigh)
     
   @staticmethod
   def chk(llr_1,llr_2):
@@ -612,8 +608,8 @@ class decoding(decoding):
 
 
 class polar_code(encoding,decoding):
-  def __init__(self,N,K,beta=1,Rayleigh=False):
-    super().__init__(N,K,beta,Rayleigh)
+  def __init__(self,N,K,beta=1,M=2,Rayleigh=False):
+    super().__init__(N,K,beta,M,Rayleigh)
 
   def main_func(self,EbNodB): 
     
@@ -639,7 +635,9 @@ if __name__=="__main__":
 
     N=256
     K=3
-    pc=polar_code(N,K,0.1,False)
+    M=4
+    Rayleigh=False
+    pc=polar_code(N,K,0.2,M,Rayleigh)
     #a,b=pc.main_func(1)
     #print(len(a))
     #print(len(b))

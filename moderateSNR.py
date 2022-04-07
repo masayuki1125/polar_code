@@ -142,7 +142,7 @@ def liner_approx(K_list,BLER_list,target_BLER):
 
 
 # In[11]:
-def est_InfoRate(N,EsNodB,beta,Rayleigh):
+def est_InfoRate(N,EsNodB,beta,Rayleigh,FourPAM=False):
   print("beta=",beta)
   #set constant
   EsNo=10 ** (EsNodB / 10)
@@ -243,16 +243,33 @@ for n in [256,512]:
   for EsNodB1 in [3,5,10]:
     R1=np.zeros(data_num)
     R2=np.zeros(data_num)
+    R_PAM=np.zeros(data_num)
+    beta_num=np.zeros(data_num)
     
     for i in range(1,data_num-1):  
       print(EsNodB2)
+      beta_num[i]=i/data_num
+      
+      #use NOMA
       R1[i]=est_InfoRate(n,EsNodB1,i/data_num,False)
       R2[i]=est_InfoRate(n,EsNodB2,i/data_num,True)
       print("R1,R2=",R1[i],R2[i])
+      
+      #use PAM
+      R_PAM[i]=est_InfoRate(n,EsNodB1,i/data_num,False,True)
+      R_PAM-=R1
+      
     
-    filename="Rate_polar_{}_{}_{}".format(EsNodB1,EsNodB2,n)
+    filename="Rate_polar_NOMA_{}_{}_{}".format(EsNodB1,EsNodB2,n)
     with open(filename,'w') as f:
 
-      print("#R1,R2",file=f)  
+      print("#beta,R1,R2",file=f)  
       for i in range(data_num):
-        print(str(R1[i]),str(R2[i]),file=f)
+        print(str(beta_num[i]),str(R1[i]),str(R2[i]),file=f)
+        
+    filename="Rate_polar_PAM_{}_{}_{}".format(EsNodB1,EsNodB2,n)
+    with open(filename,'w') as f:
+
+      print("#beta,R1,R2",file=f)  
+      for i in range(data_num):
+        print(str(beta_num[i]),str(R1[i]),str(R_PAM[i]),file=f)
