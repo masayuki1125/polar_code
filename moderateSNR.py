@@ -9,7 +9,7 @@ import numpy as np
 import cupy as cp
 pool = cp.cuda.MemoryPool(cp.cuda.malloc_managed)
 cp.cuda.set_allocator(pool.malloc)
-from polar_code import polar_code 
+from wireless_communication.main import polar_code 
 from AWGN import _AWGN
 from scipy.stats import norm
 import pickle
@@ -240,7 +240,7 @@ def est_InfoLength(N,K_init,EsNodB,beta,target_BLER,Rayleigh):
 EsNodB2=0
 data_num=10
 for n in [256,512]:
-  for EsNodB1 in [3,5,10]:
+  for EsNodB1 in [10]:
     R1=np.zeros(data_num)
     R2=np.zeros(data_num)
     R_PAM=np.zeros(data_num)

@@ -5,7 +5,7 @@
 
 
 import numpy as np
-from polar_code import polar_code
+from wireless_communication.main import polar_code
 from AWGN import _AWGN
 from polar_construction import Improved_GA
 #import sympy as sym

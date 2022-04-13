@@ -627,9 +627,7 @@ class polar_code(encoding,decoding):
 
     return information,EST_information
 
-
 # In[15]:
-
 
 if __name__=="__main__":
 

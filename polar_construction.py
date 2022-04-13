@@ -708,7 +708,7 @@ class monte_carlo(monte_carlo):
     #あるSNRで計算結果を出力する関数を作成
     #cd.main_func must input 'EbNodB' and output 1D 'codeword' and 'EST_codeword'
 
-    from polar_code import polar_code
+    from wireless_communication.main import polar_code
 
     self.pc=polar_code(N,0)
     #prepere constant

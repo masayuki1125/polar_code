@@ -57,7 +57,7 @@ class _AWGN():
         return RX_constellation
     
     def add_Rayleigh(self,constellation,No,beta):
-  
+    
         # AWGN雑音の生成
         noise = np.random.normal(0, math.sqrt(No / 2), (len(constellation))) \
                 + 1j * np.random.normal(0, math.sqrt(No / 2), (len(constellation)))
