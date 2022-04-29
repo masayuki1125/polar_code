@@ -64,15 +64,7 @@ def output(dumped,EbNodB,target_BLER,MAX_parallel):
 
   return count_err,count_all,count_biterr,count_bitall
 
-
-# In[ ]:
-
-
-
-
-
 # In[4]:
-
 
 class MC():
   def __init__(self):
