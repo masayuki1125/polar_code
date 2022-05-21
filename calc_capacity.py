@@ -7,7 +7,7 @@
 import math
 import numpy as np
 import cupy as cp
-from AWGN import _AWGN
+from hinansaki.AWGN import _AWGN
 from scipy.stats import norm
 
 

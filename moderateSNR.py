@@ -10,7 +10,7 @@ import cupy as cp
 pool = cp.cuda.MemoryPool(cp.cuda.malloc_managed)
 cp.cuda.set_allocator(pool.malloc)
 from wireless_communication.main import polar_code 
-from AWGN import _AWGN
+from hinansaki.AWGN import _AWGN
 from scipy.stats import norm
 import pickle
 import ray 

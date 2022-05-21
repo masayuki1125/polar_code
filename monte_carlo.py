@@ -8,7 +8,7 @@ import numpy as np
 import ray
 import pickle
 from PAM import PAM
-from AWGN import _AWGN
+from hinansaki.AWGN import _AWGN
 
 
 # In[4]:

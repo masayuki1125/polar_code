@@ -6,7 +6,7 @@
 
 import numpy as np
 from wireless_communication.main import polar_code
-from AWGN import _AWGN
+from hinansaki.AWGN import _AWGN
 
 
 # In[3]:

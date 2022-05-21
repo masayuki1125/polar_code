@@ -1,24 +1,16 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[1]:
-
-
-
 import numpy as np
 import math
 from decimal import *
-from hinansaki.AWGN import _AWGN
+from AWGN import _AWGN
 from polar_construction import Improved_GA
 from polar_construction import GA
-from polar_construction import monte_carlo
 
-# In[2]:
 
+# In[176]:
 
 
 class coding():
-  def __init__(self,N,K,beta=1,M=2,Rayleigh=False):
+  def __init__(self,N,K):
     super().__init__()
     '''
     polar_decode
@@ -33,26 +25,21 @@ class coding():
     self.K=K #K=0 :monte_carlo_construction
     self.R=K/N
     self.design_SNR=0
-    self.Rayleigh=Rayleigh
     
     #decide channel coding variance
-    self.ch=_AWGN(beta,M)
-    
-    if self.K!=0:
-      self.const=Improved_GA() #Improved_GA,GA
-      self.decoder_var=2 #0:SC 1:SCL 2:SCL_CRC
+    self.ch=_AWGN()
+    self.const=Improved_GA() #Improved_GA,GA
+    self.decoder_var=2 #0:SC 1:SCL 2:SCL_CRC
     if self.K==0: #for monte_carlo_construction
       self.decoder_var=0
-      self.const=GA()
     
     self.adaptive_design_SNR=False #default:False
-    self.systematic_polar=False #default:false
 
     #for SCL decoder
     self.list_size=4
 
     #prepere constants
-    self.itr_num=int(math.log2(self.N))
+    self.itr_num=np.log2(self.N).astype(int)
     self.bit_reversal_sequence=self.reverse_bits()
 
     #for encoder (CRC poly)
@@ -62,18 +49,13 @@ class coding():
     
     #flozen_bit selection 
     self.frozen_bits,self.info_bits=self.choose_frozen_bits(self.design_SNR)  
-    
-    if self.systematic_polar==True:
-      self.filename="systematic_"+self.filename
-      
-      
 
 
-# In[3]:
+# In[177]:
 
 
 class coding(coding):
-  def choose_frozen_bits(self,design_SNR,beta=1000):
+  def choose_frozen_bits(self,design_SNR,beta=1):
     if self.decoder_var==0:
       self.filename="polar_SC_{}_{}".format(self.N,self.K)
       #construction
@@ -93,7 +75,7 @@ class coding(coding):
     
 
 
-# In[4]:
+# In[178]:
 
 
 class coding(coding):
@@ -112,7 +94,9 @@ class coding(coding):
 
     return res
 
-# In[5]:
+
+# In[179]:
+
 
 class coding(coding):
   def CRC_gen(self,information,polynomial):
@@ -132,7 +116,7 @@ class coding(coding):
     return CRC_info,np.all(memory==0)
 
 
-# In[6]:
+# In[180]:
 
 
 class coding(coding):
@@ -153,21 +137,17 @@ class coding(coding):
     return res
 
 
-# In[7]:
+# In[181]:
 
 
 class encoding(coding):
-  def __init__(self,N,K,beta=1,M=2,Rayleigh=False):
-    super().__init__(N,K,beta,M,Rayleigh)
+  def __init__(self,N,K):
+    super().__init__(N,K)
   
   def generate_information(self):
     #generate information
-    
-    if self.K!=0:
-      information=np.random.randint(0,2,self.K)
-    
-    else:
-      information=np.zeros(self.K)
+    information=np.random.randint(0,2,self.K)
+    #information=np.zeros(self.K)
 
     if self.decoder_var==0 or self.decoder_var==1:
       return information
@@ -206,86 +186,21 @@ class encoding(coding):
         codeword = np.concatenate([self.encode(u1u2), self.encode(u2)])
     return codeword
 
-
-# In[8]:
-
-
-#print(ec.frozen_bits)
-#print(ec.info_bits)
-class encoding(encoding):
-  def systematic_encode(self,information):
-    X=np.zeros((self.N,self.itr_num+1))
-    X[self.frozen_bits,0]=0
-    X[self.info_bits,self.itr_num]=information
-
-    for i in reversed(range(1,self.N+1)):
-      if np.any(i-1==self.info_bits):
-        s=self.itr_num+1
-        delta=-1
-      else:
-        s=1
-        delta=1
-
-      #binary representation
-      tmp=format (i-1,'b')
-      b=tmp.zfill(self.itr_num+1)
-        
-      for j in range(1,self.itr_num+1):
-        t=s+delta*j
-        l=min(t,t-delta)
-        kai=2**(self.itr_num-l)
-        #print(l)
-        if int(b[l])==0:
-          #print("kai")
-          #print(i-kai-1)
-          #print(i-1)
-          X[i-1,t-1]=(X[i-1,t-delta-1]+X[i+kai-1,t-delta-1])%2
-        
-        else:
-          #print("b")
-          #print("kai")
-          #print(i-kai)
-          X[i-1,t-1]=X[i-1,t-delta-1]
-        
-    #print(X)
-
-    #check
-    x=X[:,self.itr_num]
-    y=X[:,0]
-    codeword=self.encode(y[self.bit_reversal_sequence])
-    if np.any(codeword!=x):
-      print(codeword)
-      print("err")
-    
-    return x
-      
-
-
-# In[9]:
-
-
-class encoding(encoding):
   def polar_encode(self):
     information=self.generate_information()
-    
-    if self.systematic_polar==False:
-      u_message=self.generate_U(information)
-      codeword=self.encode(u_message[self.bit_reversal_sequence])
-    
-    elif self.systematic_polar==True:
-      codeword=self.systematic_encode(information)
-    
+    u_message=self.generate_U(information)
+    codeword=self.encode(u_message[self.bit_reversal_sequence])
     #codeword=u_message@self.Gres%2
     return information,codeword
 
 
-# In[10]:
+# In[182]:
 
 
 class decoding(coding):
 
-  def __init__(self,N,K,beta=1,M=2,Rayleigh=False):
-    super().__init__(N,K,beta,M,Rayleigh)
+  def __init__(self,N,K):
+    super().__init__(N,K)
     
   @staticmethod
   def chk(llr_1,llr_2):
@@ -305,7 +220,7 @@ class decoding(coding):
     return res
 
 
-# In[11]:
+# In[183]:
 
 
 class decoding(decoding):
@@ -335,9 +250,6 @@ class decoding(decoding):
 
       #right node operation 
       elif before_process!=1 and length%2**(self.itr_num-depth)==2**(self.itr_num-depth-1):
-        
-        #print(length%2**(self.itr_num-depth))
-        #print(2**(self.itr_num-depth-1))
         
         depth+=1
         before_process=1
@@ -378,10 +290,6 @@ class decoding(decoding):
         depth-=1 #back to depth
         before_process=3
         
-        #from IPython.core.debugger import Pdb; Pdb().set_trace()
-        #print(llr)
-        #print(EST_codeword)
-        
         if length==self.N:
           break
     
@@ -391,16 +299,11 @@ class decoding(decoding):
       res=llr[self.itr_num]
       #np.savetxt("llr",res)
       #from IPython.core.debugger import Pdb; Pdb().set_trace()
-      
-    if self.systematic_polar==True:
-      #re encode polar
-      u_message=self.generate_U(res[self.info_bits])
-      res=self.encode(u_message[self.bit_reversal_sequence])
     
     return res
 
 
-# In[12]:
+# In[184]:
 
 
 class decoding(decoding):
@@ -539,29 +442,11 @@ class decoding(decoding):
           break
     
     res_list_num=0
-    res=np.zeros((self.list_size,self.N))
-    #print(res.shape)
-    #print(res[i].shape)
-         
-      #set candidates
-    for i in range(self.list_size):
-      res[i,:]=EST_codeword[i,self.itr_num]
-        
-    #for systematic_polar
-    if self.systematic_polar==True:
-      #re encode polar
-      for i in range(self.list_size):
-        #print(i)
-        #print(res[i][self.info_bits])
-        u_message=self.generate_U(res[i,:][self.info_bits])
-        res[i,:]=self.encode(u_message[self.bit_reversal_sequence])
-    
- 
     
     #CRC_check
     if self.decoder_var==2:
       for i in range(self.list_size):
-        EST_CRC_info=res[i][self.info_bits]
+        EST_CRC_info=EST_codeword[i,self.itr_num][self.info_bits]
         _,check=self.CRC_gen(EST_CRC_info,self.CRC_polynomial)
         #print(check)
         if check==True:
@@ -574,10 +459,10 @@ class decoding(decoding):
 
     #print("\r",PML,end="")
     
-    return res[res_list_num]
+    return EST_codeword[res_list_num,self.itr_num]
 
 
-# In[13]:
+# In[185]:
 
 
 class decoding(decoding):
@@ -604,12 +489,12 @@ class decoding(decoding):
     return res
 
 
-# In[14]:
+# In[186]:
 
 
 class polar_code(encoding,decoding):
-  def __init__(self,N,K,beta=1,M=2,Rayleigh=False):
-    super().__init__(N,K,beta,M,Rayleigh)
+  def __init__(self,N,K):
+    super().__init__(N,K)
 
   def main_func(self,EbNodB): 
     
@@ -617,9 +502,10 @@ class polar_code(encoding,decoding):
       if self.design_SNR!=EbNodB:
         self.design_SNR=EbNodB
         self.frozen_bits,self.info_bits=self.choose_frozen_bits(self.design_SNR)
-      
+        
+    
     information,codeword=self.polar_encode()
-    Lc=-1*self.ch.generate_LLR(codeword,EbNodB,self.Rayleigh)#デコーダが＋、ー逆になってしまうので-１をかける
+    Lc=-1*self.ch.generate_LLR(codeword,EbNodB)#デコーダが＋、ー逆になってしまうので-１をかける
     EST_information=self.polar_decode(Lc) 
       
     if len(EST_information)!=len(information):
@@ -627,15 +513,15 @@ class polar_code(encoding,decoding):
 
     return information,EST_information
 
-# In[15]:
+
+# In[187]:
+
 
 if __name__=="__main__":
 
     N=1024
     K=512
-    M=4
-    Rayleigh=False
-    pc=polar_code(N,K,0.2,M,Rayleigh)
+    pc=polar_code(N,K)
     #a,b=pc.main_func(1)
     #print(len(a))
     #print(len(b))
@@ -668,6 +554,4 @@ if __name__=="__main__":
       
       return  count_err,count_all,count_berr,count_all
     
-    output(0)
-    
-
+    output(3)
