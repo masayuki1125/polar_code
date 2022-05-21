@@ -524,11 +524,6 @@ class decoding(decoding):
           #decide each list index
           for i in range(branch):
             EST_codeword[i,depth,length]=0
-            
-          #update path metric
-          u_tilde=-1#because frozen_bit is 0
-          for i in range(branch):
-            PML[i]=PML[i]+self.calc_BM(u_tilde,llr[i,depth,length])
         
         #info_bit operation
         else :

@@ -20,7 +20,7 @@ class coding():
     1:simplified SCL decoder
     2:simplified CA SCL decoder
     '''
-    self.decoder_var=1 #0:SC 1:SCL_CRC
+    self.decoder_var=0 #0:SC 1:SCL_CRC
     self.N=N
     self.R=0.5
     self.K=math.floor(self.R*self.N)

@@ -29,7 +29,7 @@ class coding():
     #decide channel coding variance
     self.ch=_AWGN()
     self.const=Improved_GA() #Improved_GA,GA
-    self.decoder_var=2 #0:SC 1:SCL 2:SCL_CRC
+    self.decoder_var=0 #0:SC 1:SCL 2:SCL_CRC
     if self.K==0: #for monte_carlo_construction
       self.decoder_var=0
     
@@ -44,7 +44,7 @@ class coding():
 
     #for encoder (CRC poly)
     #1+x+x^2+....
-    self.CRC_polynomial =np.array([1,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,1])
+    self.CRC_polynomial =np.array([1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1])
     self.CRC_len=len(self.CRC_polynomial)
     
     #flozen_bit selection 
@@ -99,19 +99,17 @@ class coding(coding):
 
 
 class coding(coding):
-  def CRC_gen(self,information,polynomial):
-    parity=np.zeros(len(polynomial)-1)
+  def CRC_gen(self,information,parity,polynomial):
     CRC_info=np.zeros(len(information)+len(parity),dtype='int')
     CRC_info[:len(information)]=information
     CRC_info[len(information):]=parity
 
     memory=np.zeros(len(polynomial)-1,dtype='int')
     CRC_info[:len(information)]=information
-    for i in range(len(information)):
-      memory=self.cyclic(information[i],polynomial,memory)
-      #print(memory)
+    for i in range(len(CRC_info)):
+      memory=self.cyclic(CRC_info[i],polynomial,memory)
     #print(len(memory))
-    CRC_info[len(information):]=memory[::-1]
+    CRC_info[len(information):]=memory
     
     return CRC_info,np.all(memory==0)
 
@@ -157,7 +155,9 @@ class encoding(coding):
       CRC_info,_=self.CRC_gen(information,self.CRC_polynomial)
 
       ##check CRC_info
-      _,check=self.CRC_gen(CRC_info,self.CRC_polynomial)
+      parity=CRC_info[len(information):]
+      information=CRC_info[:len(information)]
+      _,check=self.CRC_gen(information,parity,self.CRC_polynomial)
       if check!=True:
         print("CRC_info error")
       
@@ -376,6 +376,9 @@ class decoding(decoding):
 
         depth-=1
         before_process=2
+    
+      else:
+        print("error!")
 
       #leaf node operation
       if depth==self.itr_num:
@@ -447,7 +450,7 @@ class decoding(decoding):
     if self.decoder_var==2:
       for i in range(self.list_size):
         EST_CRC_info=EST_codeword[i,self.itr_num][self.info_bits]
-        _,check=self.CRC_gen(EST_CRC_info,self.CRC_polynomial)
+        _,check=self.CRC_gen(EST_CRC_info[:self.K],EST_CRC_info[self.K:],self.CRC_polynomial)
         #print(check)
         if check==True:
           res_list_num=i
