@@ -554,4 +554,4 @@ if __name__=="__main__":
       
       return  count_err,count_all,count_berr,count_all
     
-    output(3)
+    output(0)
